@@ -3,6 +3,14 @@ import numpy as np
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
 
+
+def compute_metrics(eval_pred):
+    logits, labels = eval_pred
+    predictions = np.argmax(logits, axis=-1)
+    metric = evaluate.load("accuracy")
+    return metric.compute(predictions=predictions, references=labels)
+
+
 class FineTuner:
     def __init__(self, model_name, dataset):
         self.dataset = dataset
@@ -12,12 +20,6 @@ class FineTuner:
 
     def tokenize_function(self, examples):
         return self.tokenizer(examples["text"], padding="max_length", truncation=True)
-
-    def compute_metrics(self, eval_pred):
-        logits, labels = eval_pred
-        predictions = np.argmax(logits, axis=-1)
-        metric = evaluate.load("accuracy")
-        return metric.compute(predictions=predictions, references=labels)
 
     def init_trainer(self):
         tokenized_datasets = self.dataset.map(self.tokenize_function, batched=True)
@@ -31,7 +33,7 @@ class FineTuner:
             args=training_args,
             train_dataset=small_train_dataset,
             eval_dataset=small_eval_dataset,
-            compute_metrics=self.compute_metrics,
+            compute_metrics=compute_metrics,
         )
 
         return trainer
@@ -54,7 +56,7 @@ class FineTuner:
 
         if label == 1:
             return {
-                'sentiment': 'Fake',
+                'sentiment': 'Generated',
                 'probability': probs[1]
             }
         else:
