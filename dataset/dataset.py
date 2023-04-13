@@ -7,13 +7,13 @@ import datasets
 _CITATION = """\
 @InProceedings{mixed-labeled:dataset,
 title = {Mixed-labeled dataset},
-author={Dataset creator},
+author={Nicolai Sivesind & Andreas Bentzen Winje},
 year={2023}
 }
 """
 
-_DESCRIPTION = """This dataset contains labeled data with real and generated content from different domains: 
-Wikipedia introductions and academic articles. """
+_DESCRIPTION = """This dataset contains labeled data with real and generated texts from various domains: 
+Wikipedia introductions and academic articles."""
 
 _HOMEPAGE = ""
 
