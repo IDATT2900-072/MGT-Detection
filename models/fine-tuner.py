@@ -4,12 +4,14 @@ import datasets as ds
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
 
+
 # Function for computing evaluation metrics
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
     predictions = np.argmax(logits, axis=-1)
     metric = ds.load_metric("accuracy")
     return metric.compute(predictions=predictions, references=labels)
+
 
 # Fine-tunes a pre-trained model on a specific dataset
 class FineTuner:
@@ -58,14 +60,15 @@ class FineTuner:
             encoding = self.tokenizer(text, return_tensors="pt", padding="max_length", truncation=True)
             encoding = {k: v.to(self.model.device) for k, v in encoding.items()}
 
+            # Execution
             with torch.no_grad():
                 outputs = self.model(**encoding)
                 logits = outputs.logits.squeeze()
 
+            # Calculate probabilities and find the most likely label
             probabilities = torch.softmax(logits.cpu(), dim=-1)
             most_likely_label_index = torch.argmax(probabilities, dim=-1).item()
             most_likely_label = self.trainer.label_names[most_likely_label_index]
             score = probabilities[most_likely_label_index].item()
 
             print(f"Text: {text[:100]}\nPredicted label: {most_likely_label}, Classification Score: {score}\n")
-            
