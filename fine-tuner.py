@@ -1,5 +1,6 @@
 import evaluate
 import numpy as np
+import datasets as ds
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
 
@@ -7,7 +8,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trai
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
     predictions = np.argmax(logits, axis=-1)
-    metric = evaluate.load("accuracy")
+    metric = ds.load_metric("accuracy")
     return metric.compute(predictions=predictions, references=labels)
 
 
@@ -15,7 +16,7 @@ class FineTuner:
     def __init__(self, model_name, dataset):
         self.dataset = dataset
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
+        self.model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
         self.trainer = self.init_trainer()
 
     def tokenize_function(self, examples):
@@ -49,8 +50,8 @@ class FineTuner:
 
         logits = outputs.logits
 
-        sigmoid = torch.nn.Sigmoid()
-        probs = sigmoid(logits.squeeze().cpu())
+        softmax = torch.nn.Softmax(dim=-1)
+        probs = softmax(logits.squeeze().cpu())
         probs = probs.detach().numpy()
         label = np.argmax(probs, axis=-1)
 
