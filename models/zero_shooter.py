@@ -30,7 +30,7 @@ class ZeroShooter:
                                                 padding="max_length")
             with self.tokenizer.as_target_tokenizer():
                 targets = self.tokenizer(self.labels, return_tensors="pt", padding="max_length",
-                                         truncation=True)
+                                        truncation=True)
 
             # Move inputs and targets to the same device as the model
             inputs = {k: v.to(device) for k, v in inputs.items()}

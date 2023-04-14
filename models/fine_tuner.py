@@ -9,7 +9,7 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trai
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
     predictions = np.argmax(logits, axis=-1)
-    metric = ds.load_metric("accuracy")
+    metric = evaluate.load("accuracy")
     return metric.compute(predictions=predictions, references=labels)
 
 
@@ -29,9 +29,9 @@ class FineTuner:
 
         # Training and evaluation datasets
         train_dataset = tokenized_datasets["train"].shuffle(seed=42).select(range(1000))
-        eval_dataset = tokenized_datasets["train"].shuffle(seed=42).select(range(1000))
+        eval_dataset = tokenized_datasets["test"].shuffle(seed=42).select(range(1000))
 
-        training_args = TrainingArguments(output_dir="test_trainer", evaluation_strategy="epoch")
+        training_args = TrainingArguments(output_dir="test_trainer", evaluation_strategy="epoch", optim='adamw_torch')
         trainer = Trainer(
             model=self.model,
             args=training_args,
