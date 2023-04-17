@@ -23,16 +23,19 @@ def compute_metrics(eval_pred):
 
 # Fine-tunes a pre-trained model on a specific dataset
 class FineTuner:
-    def __init__(self, model_name, dataset, num_train_samples=None, num_eval_samples=None):
+    def __init__(self, model_name, dataset, num_train_samples=None, num_eval_samples=None, max_tokenized_length=None):
         self.dataset = dataset
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
-        self.trainer = self.init_trainer()
         self.num_train_samples = num_train_samples
         self.num_eval_samples = num_eval_samples
+        self.max_tokenized_length = max_tokenized_length
+
+        # Initialize trainer
+        self.trainer = self.init_trainer()
 
     def tokenize_function(self, examples):
-        return self.tokenizer(examples["text"], padding="max_length", truncation=True)
+        return self.tokenizer(examples["text"], padding='max_length', truncation=True, max_length=self.max_tokenized_length)
 
     def init_trainer(self):
         tokenized_datasets = self.dataset.map(self.tokenize_function, batched=True)
@@ -41,22 +44,25 @@ class FineTuner:
         train_dataset = tokenized_datasets["train"].shuffle(seed=42)
         eval_dataset = tokenized_datasets["test"].shuffle(seed=42)
 
+        # Select subsets for faster training
         if (self.num_train_samples):
             train_dataset = train_dataset.select(range(self.num_train_samples))
         if (self.num_eval_samples):
             eval_dataset = eval_dataset.select(range(self.num_eval_samples))
 
-        training_args = TrainingArguments(output_dir="test_trainer",
+        training_args = TrainingArguments(output_dir="./outputs/"+self.model.config._name_or_path + "-tuned",
                                           logging_dir="./logs",
                                           logging_steps=100,
                                           logging_first_step=True,
                                           evaluation_strategy="steps", 
                                           save_strategy='epoch',
                                           optim='adamw_torch', 
+                                          num_train_epochs=5,
                                           auto_find_batch_size=True,
-                                          num_train_epochs=5)
+        )
         trainer = Trainer(
             model=self.model,
+            tokenizer=self.tokenizer,
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
