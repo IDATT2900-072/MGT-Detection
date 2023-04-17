@@ -32,8 +32,8 @@ def reformat(source_csv_path, real_label, generated_label, target_dir_path, targ
 
 
 # Execution queue
-reformat(source_csv_path="../../Datasets/GPT-wiki-intro.csv",
+reformat(source_csv_path="../datasets/origins/GPT-wiki-intro.csv",
         real_label="wiki_intro",
         generated_label="generated_intro",
-        target_dir_path="./dataset",
+        target_dir_path="../datasets/human-vs-machine",
         target_file_name="wiki-labeled")
