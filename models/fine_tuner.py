@@ -10,13 +10,15 @@ def compute_metrics(eval_pred):
     metric1 = evaluate.load("accuracy")
     metric2 = evaluate.load("precision")
     metric3 = evaluate.load("recall")
+    metric4 = evaluate.load("f1")
     
     logits, labels = eval_pred
     predictions = np.argmax(logits, axis=-1)
     accuracy = metric1.compute(predictions=predictions, references=labels)["accuracy"]
     precision = metric2.compute(predictions=predictions, references=labels)["precision"]
     recall = metric3.compute(predictions=predictions, references=labels)["recall"]
-    return {"accuracy": accuracy, "precision": precision, "recall": recall}
+    f1 = metric4.compute(predictions=predictions, references=labels)["f1"]
+    return {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
 
 
 # Fine-tunes a pre-trained model on a specific dataset
@@ -37,8 +39,12 @@ class FineTuner:
         train_dataset = tokenized_datasets["train"].shuffle(seed=42).select(range(1000))
         eval_dataset = tokenized_datasets["test"].shuffle(seed=42).select(range(1000))
 
-        training_args = TrainingArguments(output_dir="test_trainer", 
-                                          evaluation_strategy="epoch", 
+        training_args = TrainingArguments(output_dir="test_trainer",
+                                          logging_dir="./logs",
+                                          logging_steps=100,
+                                          logging_first_step=True,
+                                          evaluation_strategy="steps", 
+                                          save_strategy='epoch',
                                           optim='adamw_torch', 
                                           auto_find_batch_size=True,
                                           num_train_epochs=5)

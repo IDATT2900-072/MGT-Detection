@@ -1,4 +1,4 @@
-from fine_tuner import FineTuner
+from model.fine_tuner import FineTuner
 import datasets
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, pipeline
 import torch
