@@ -5,14 +5,14 @@ import random
 import datasets
 
 _CITATION = """\
-@InProceedings{mixed-labeled:dataset,
-title = {Mixed-labeled dataset},
+@InProceedings{human-vs-machine:dataset,
+title = {Human vs Machine dataset collection},
 author={Nicolai Sivesind & Andreas Bentzen Winje},
 year={2023}
 }
 """
 
-_DESCRIPTION = """This dataset contains labeled data with real and generated texts from various domains: 
+_DESCRIPTION = """This dataset contains labeled data with human-produced and LLM-generated texts from various domains: 
 Wikipedia introductions and academic articles."""
 
 _HOMEPAGE = ""
@@ -21,17 +21,17 @@ _LICENSE = ""
 
 
 class DomainConfig(datasets.BuilderConfig):
-    def __init__(self, name, filename, **kwargs):
+    def __init__(self, name, url, **kwargs):
         super(DomainConfig, self).__init__(name=name, **kwargs)
-        self.filename = filename
+        self.url = url
 
 
 class MixedLabeled(datasets.GeneratorBasedBuilder):
     VERSION = datasets.Version("1.0.0")
 
     BUILDER_CONFIGS = [
-        DomainConfig(name="wiki_labeled", filename="wiki-labeled.csv", description="Wikipedia introductions"),
-        DomainConfig(name="academic_labeled", filename="academic-labeled.csv", description="Academic articles"),
+        DomainConfig(name="wiki_labeled", url="./wiki-labeled.csv", description="Wikipedia introductions"),
+        DomainConfig(name="academic_labeled", url="./academic-labeled.csv", description="Academic articles"),
     ]
 
     def _info(self):
@@ -51,18 +51,20 @@ class MixedLabeled(datasets.GeneratorBasedBuilder):
         )
 
     def _split_generators(self, dl_manager):
-        data_dir = os.path.join(os.getcwd(), "dataset")
-        filepath = os.path.join(data_dir, self.config.filename)
+        downloaded_file = dl_manager.download(self.config.url)
 
         data = []
-        with open(filepath, encoding="utf-8") as f:
+        with open(downloaded_file, encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 data.append({"class label": int(row["class label"]), "text": row["text"]})
 
+        train_alloc = 0.7
+        train_split, test_split = int(train_alloc * len(data)), int((train_alloc + ((1 - train_alloc) / 2)) * len(data))
+        train_data, test_data, validation_data = data[:train_split], data[train_split:test_split], data[test_split:]
+
+        random.seed(42)
         random.shuffle(data)
-        train_split = int(0.8 * len(data))
-        train_data, test_data = data[:train_split], data[train_split:]
 
         return [
             datasets.SplitGenerator(
@@ -77,6 +79,13 @@ class MixedLabeled(datasets.GeneratorBasedBuilder):
                 gen_kwargs={
                     "data": test_data,
                     "split": "test"
+                },
+            ),
+            datasets.SplitGenerator(
+                name=datasets.Split.VALIDATION,
+                gen_kwargs={
+                    "data": validation_data,
+                    "split": "validation"
                 },
             ),
         ]

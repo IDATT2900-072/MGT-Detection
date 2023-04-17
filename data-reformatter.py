@@ -30,6 +30,7 @@ def reformat(source_csv_path, real_label, generated_label, target_dir_path, targ
 
     print(f"Reformatting complete. Number of entries in reformatted dataset: {len(formatted_data)}")
 
+
 # Execution queue
 reformat(source_csv_path="../../Datasets/GPT-wiki-intro.csv",
          real_label="wiki_intro",

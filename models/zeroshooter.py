@@ -14,23 +14,21 @@ class ZeroShooter:
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
         self.model.eval()
 
-    def classify(self):
+    def classify(self, amount=10):
         # Use GPU if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(device)
 
-        subset = self.dataset["test"].select(range(10))
+        subset = self.dataset["test"].select(range(amount))
 
         # Zero-shot classification on the selected dataset
         for data_point in subset:
             text = data_point["text"]
 
             # Encode input text and labels
-            inputs = self.tokenizer.encode_plus(text, return_tensors="pt", truncation=True,
-                                                padding="max_length")
-            with self.tokenizer.as_target_tokenizer():
-                targets = self.tokenizer(self.labels, return_tensors="pt", padding="max_length",
-                                         truncation=True)
+            inputs = self.tokenizer(text_target=text, return_tensors="pt", truncation=True, padding="max_length")
+            targets = self.tokenizer(text_target=self.labels, return_tensors="pt", padding="max_length",
+                                     truncation=True)
 
             # Move inputs and targets to the same device as the model
             inputs = {k: v.to(device) for k, v in inputs.items()}
