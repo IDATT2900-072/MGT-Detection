@@ -28,6 +28,8 @@ class FineTuner:
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
         self.trainer = self.init_trainer()
+        self.num_train_samples = num_train_samples
+        self.num_eval_samples = num_eval_samples
 
     def tokenize_function(self, examples):
         return self.tokenizer(examples["text"], padding="max_length", truncation=True)
@@ -36,8 +38,13 @@ class FineTuner:
         tokenized_datasets = self.dataset.map(self.tokenize_function, batched=True)
 
         # Training and evaluation datasets
-        train_dataset = tokenized_datasets["train"].shuffle(seed=42).select(range(1000))
-        eval_dataset = tokenized_datasets["test"].shuffle(seed=42).select(range(1000))
+        train_dataset = tokenized_datasets["train"].shuffle(seed=42)
+        eval_dataset = tokenized_datasets["test"].shuffle(seed=42)
+
+        if (self.num_train_samples):
+            train_dataset = train_dataset.select(range(self.num_train_samples))
+        if (self.num_eval_samples):
+            eval_dataset = eval_dataset.select(range(self.num_eval_samples))
 
         training_args = TrainingArguments(output_dir="test_trainer",
                                           logging_dir="./logs",
