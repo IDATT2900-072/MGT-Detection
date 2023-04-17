@@ -31,13 +31,13 @@ class FineTuner:
         train_dataset = tokenized_datasets["train"].shuffle(seed=42).select(range(1000))
         eval_dataset = tokenized_datasets["test"].shuffle(seed=42).select(range(1000))
 
-        training_args = TrainingArguments(output_dir="test_trainer", evaluation_strategy="epoch", optim='adamw_torch')
+        training_args = TrainingArguments(output_dir="test_trainer", evaluation_strategy="epoch", optim='adamw_torch', auto_find_batch_size=True)
         trainer = Trainer(
             model=self.model,
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            compute_metrics=compute_metrics,
+            compute_metrics=None,
         )
 
         return trainer
