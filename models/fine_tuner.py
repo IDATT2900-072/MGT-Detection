@@ -7,15 +7,21 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trai
 
 # Function for computing evaluation metrics
 def compute_metrics(eval_pred):
+    metric1 = evaluate.load("accuracy")
+    metric2 = evaluate.load("precision")
+    metric3 = evaluate.load("recall")
+    
     logits, labels = eval_pred
     predictions = np.argmax(logits, axis=-1)
-    metric = evaluate.load("accuracy")
-    return metric.compute(predictions=predictions, references=labels)
+    accuracy = metric1.compute(predictions=predictions, references=labels)["accuracy"]
+    precision = metric2.compute(predictions=predictions, references=labels)["precision"]
+    recall = metric3.compute(predictions=predictions, references=labels)["recall"]
+    return {"accuracy": accuracy, "precision": precision, "recall": recall}
 
 
 # Fine-tunes a pre-trained model on a specific dataset
 class FineTuner:
-    def __init__(self, model_name, dataset):
+    def __init__(self, model_name, dataset, num_train_samples=None, num_eval_samples=None):
         self.dataset = dataset
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
@@ -31,13 +37,17 @@ class FineTuner:
         train_dataset = tokenized_datasets["train"].shuffle(seed=42).select(range(1000))
         eval_dataset = tokenized_datasets["test"].shuffle(seed=42).select(range(1000))
 
-        training_args = TrainingArguments(output_dir="test_trainer", evaluation_strategy="epoch", optim='adamw_torch', auto_find_batch_size=True)
+        training_args = TrainingArguments(output_dir="test_trainer", 
+                                          evaluation_strategy="epoch", 
+                                          optim='adamw_torch', 
+                                          auto_find_batch_size=True,
+                                          num_train_epochs=5)
         trainer = Trainer(
             model=self.model,
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            compute_metrics=None,
+            compute_metrics=compute_metrics,
         )
 
         return trainer

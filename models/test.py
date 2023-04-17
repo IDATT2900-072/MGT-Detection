@@ -18,6 +18,8 @@ ds = ds.rename_column("class label", "labels")
 
 # print(pipe(ds['test'].select(range(10))['text']))
 
-print("="*100)
+print("="*150)
 tuner = FineTuner("roberta-base-openai-detector", ds)
+print("="*150)
+print("Starting training...")
 tuner.train()
