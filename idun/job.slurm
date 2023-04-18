@@ -6,8 +6,9 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=16G
 #SBATCH --gres=gpu:1
+#SBATCH --constraint=A100
 #SBATCH --job-name="IDATT2900-072 MGT-Detection"
-#SBATCH --output=idun-results.out
+#SBATCH --output=idun-results2.out
 #SBATCH --mail-user=andrebw@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
