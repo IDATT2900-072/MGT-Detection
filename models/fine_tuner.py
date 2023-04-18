@@ -23,13 +23,14 @@ def compute_metrics(eval_pred):
 
 # Fine-tunes a pre-trained model on a specific dataset
 class FineTuner:
-    def __init__(self, model_name, dataset, num_train_samples=None, num_validation_samples=None, max_tokenized_length=None):
+    def __init__(self, model_name, dataset, num_epochs=5, num_train_samples=None, num_validation_samples=None, max_tokenized_length=None):
         self.dataset = dataset
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
         self.num_train_samples = num_train_samples
         self.num_validation_samples = num_validation_samples
         self.max_tokenized_length = max_tokenized_length
+        self.num_epochs = num_epochs
 
         # Initialize trainer
         self.trainer = self.init_trainer()
@@ -57,7 +58,7 @@ class FineTuner:
                                           evaluation_strategy="steps",
                                           save_strategy='epoch',
                                           optim='adamw_torch', 
-                                          num_train_epochs=5,
+                                          num_train_epochs=self.num_epochs,
                                           auto_find_batch_size=True,
         )
         trainer = Trainer(
