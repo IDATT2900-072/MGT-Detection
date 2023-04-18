@@ -3,6 +3,10 @@ import datasets
 import wandb
 
 ds = datasets.load_dataset("NicolaiSivesind/human-vs-machine", "wiki_labeled")
+ds_mlt = 0.1
+ds['train'] = ds['train'].select(range(int(len(ds['train'])*ds_mlt)))
+ds['test'] = ds['test'].select(range(int(len(ds['train'])*ds_mlt)))
+ds['validation'] = ds['validation'].select(range(int(len(ds['train'])*ds_mlt)))
 
 model_name = "bigscience/bloomz-560m"
 
