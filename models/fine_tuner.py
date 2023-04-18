@@ -43,7 +43,7 @@ class FineTuner:
 
         # Training and validation datasets
         train_dataset = tokenized_datasets["train"].shuffle(seed=42)
-        validation_dataset = tokenized_datasets["test"].shuffle(seed=42)
+        validation_dataset = tokenized_datasets["validation"].shuffle(seed=42)
 
         # Select subsets for faster training
         if (self.num_train_samples):
