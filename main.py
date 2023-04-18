@@ -1,9 +1,16 @@
 from models.fine_tuner import FineTuner
 import datasets
+import wandb
 
 ds = datasets.load_dataset("NicolaiSivesind/human-vs-machine", "wiki_labeled")
 
 model_name = "roberta-base-openai-detector"
+
+wandb.init(project="IDATT2900-072",
+           config = {
+            'base-model': model_name,
+            'dataset': ds['train'].config_name,
+           })
 
 print("="*150)
 print("Initiating trainer...")
