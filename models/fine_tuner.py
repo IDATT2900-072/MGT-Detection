@@ -113,7 +113,7 @@ class FineTuner:
         test_dataset = dataset['test'] if dataset else self.dataset['test']
         tokenized = test_dataset.map(self.tokenize_function, batched=True)
         # Prefix for WandB - to destinguish between the tests if running multiple
-        prefix = "test" if not dataset else "test_" + test_dataset.config_name.replace("_","-")
+        prefix = "test_" + test_dataset.config_name.replace("_","-")
         return self.trainer.evaluate(tokenized, metric_key_prefix=prefix)
 
     def classify(self, text):
