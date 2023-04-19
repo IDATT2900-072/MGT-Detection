@@ -1,14 +1,14 @@
 #!/bin/sh
 #SBATCH --partition=GPUQ
 #SBATCH --account=share-ie-idi
-#SBATCH --time=00:30:00
+#SBATCH --time=02:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=16G
 #SBATCH --gres=gpu:1
 #SBATCH --constraint=A100
-#SBATCH --job-name="IDATT2900-072 MGT-Detection"
-#SBATCH --output=idun-results2.out
+#SBATCH --job-name="full-560m-A"
+#SBATCH --output="res-%x.out"
 #SBATCH --mail-user=andrebw@stud.ntnu.no
 #SBATCH --mail-type=ALL
 
