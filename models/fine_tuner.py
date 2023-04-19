@@ -1,8 +1,11 @@
 import evaluate
 import numpy as np
 import datasets as ds
+from datasets import Dataset
 import torch
+import wandb
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
+from typing import Dict
 
 
 # Function for computing evaluation metrics
@@ -38,6 +41,15 @@ class FineTuner:
         self.max_tokenized_length = max_tokenized_length
         self.num_epochs = num_epochs
         self.logging_steps = logging_steps
+
+        # Initialize Weights and Biases
+        wandb.init(project="IDATT2900-072",
+           config = {
+            'base_model': model_name,
+            'dataset': dataset['train'].config_name,
+            'train_dataset_size': len(dataset['train']),
+            'eval_dataset_size': len(dataset['validation']),
+           })
 
         # Initialize trainer
         self.trainer = self.init_trainer()
@@ -86,7 +98,25 @@ class FineTuner:
     def train(self):
         self.trainer.train()
 
-    def classify(self):
+    def test(self, dataset: Dataset=None) -> Dict[str, float]:
+        """
+        Tests the model on a dataset and logs metrics to WandB.
+
+            params:
+                dataset (`Dataset`, *optional*):
+                    The dataset to test. If none is provided, use the dataset of the test-dataset of the tuner.
+            returns:
+                dict[str, float]:
+                    A dictionary containing the metrics
+        """
+        # If none provided, use default tuner dataset
+        test_dataset = dataset['test'] if dataset else self.dataset['test']
+        tokenized = test_dataset.map(self.tokenize_function, batched=True)
+        # Prefix for WandB - to destinguish the tests
+        prefix = "test" if not dataset else "test-"+test_dataset.config_name
+        return self.trainer.evaluate(tokenized, metric_key_prefix=prefix)
+
+    def classify(self, text):
         # Use GPU if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(device)
