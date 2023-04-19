@@ -18,7 +18,7 @@ wandb.init(project="IDATT2900-072",
 
 print("="*150)
 print("Initiating trainer...")
-tuner = FineTuner(model_name, ds, num_epochs=0.1, logging_steps=200, max_tokenized_length=512)
+tuner = FineTuner(model_name, ds, num_epochs=1, logging_steps=200, max_tokenized_length=512)
 print("="*150)
 print("Starting training...")
 tuner.train()
