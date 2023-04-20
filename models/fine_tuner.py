@@ -35,7 +35,7 @@ class FineTuner:
                  ):
         self.dataset = dataset
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
+        self.model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2, low_cpu_mem_usage=True)
         self.num_train_samples = num_train_samples
         self.num_validation_samples = num_validation_samples
         self.max_tokenized_length = max_tokenized_length
@@ -74,12 +74,16 @@ class FineTuner:
         if (self.num_validation_samples):
             validation_dataset = validation_dataset.select(range(self.num_validation_samples))
 
-        training_args = TrainingArguments(output_dir="./outputs/"+self.model.config._name_or_path + "-tuned",
+        # E.g "bloomz-560m-wiki_labeled-27000"
+        save_name = self.model.config._name_or_path + "-" + self.dataset['train'].config_name + "-" + str(len(self.dataset['train']))
+
+        training_args = TrainingArguments(output_dir="./outputs/"+save_name,
                                           logging_dir="./logs",
                                           logging_steps=self.logging_steps,
                                           logging_first_step=True,
                                           evaluation_strategy="steps",
-                                          save_strategy='epoch',
+                                          save_strategy='steps',
+                                          save_steps=self.logging_steps,
                                           optim='adamw_torch', 
                                           num_train_epochs=self.num_epochs,
                                           auto_find_batch_size=True,
