@@ -87,6 +87,7 @@ class FineTuner:
                                           optim='adamw_torch', 
                                           num_train_epochs=self.num_epochs,
                                           auto_find_batch_size=True,
+                                          load_best_model_at_end=True,
         )
         trainer = Trainer(
             model=self.model,
