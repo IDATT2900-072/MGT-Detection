@@ -1,6 +1,5 @@
 import evaluate
 import numpy as np
-import datasets as ds
 from datasets import Dataset
 import torch
 import wandb
@@ -16,8 +15,16 @@ class FineTuner:
                  logging_steps=500,
                  ):
         self.dataset = dataset
+        self.labels = dataset['train'].features['label'].names
+        self.id2label = {0: self.labels[0], 1: self.labels[1]}
+        self.label2id = {self.labels[0]: 0, self.labels[1]: 1}
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2, low_cpu_mem_usage=True)
+        self.model = AutoModelForSequenceClassification.from_pretrained(model_name, 
+                                                                        num_labels=2, 
+                                                                        low_cpu_mem_usage=True,
+                                                                        label2id=self.label2id,
+                                                                        id2label=self.id2label,
+                                                                        )
         self.max_tokenized_length = max_tokenized_length
         self.num_epochs = num_epochs
         self.logging_steps = logging_steps
@@ -58,7 +65,7 @@ class FineTuner:
                                           logging_first_step=True,
                                           evaluation_strategy="steps",
                                           save_strategy='steps',
-                                          save_steps=self.logging_steps,
+                                          save_steps=int(2*self.logging_steps),
                                           optim='adamw_torch', 
                                           num_train_epochs=self.num_epochs,
                                           auto_find_batch_size=True,
