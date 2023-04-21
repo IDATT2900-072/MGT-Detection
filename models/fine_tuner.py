@@ -29,6 +29,9 @@ class FineTuner:
         self.num_epochs = num_epochs
         self.logging_steps = logging_steps
 
+        # Initialize trainer
+        self.trainer = self.init_trainer()
+
         # Initialize Weights and Biases
         wandb.init(project="IDATT2900-072",
            config = {
@@ -36,10 +39,7 @@ class FineTuner:
             'dataset': dataset['train'].config_name,
             'train_dataset_size': len(dataset['train']),
             'eval_dataset_size': len(dataset['validation']),
-           })
-
-        # Initialize trainer
-        self.trainer = self.init_trainer()
+        })
 
     def tokenize_function(self, examples):
         return self.tokenizer(text_target=examples["text"],
