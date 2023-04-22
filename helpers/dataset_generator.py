@@ -31,7 +31,10 @@ def sort_by_count(dataset, column_name):
     new_dataset = []
 
     # Format data_points and retrieve word_count
-    for data_point in dataset:
+    for i, data_point in enumerate(dataset):
+        total = len(dataset)
+        if i % 10000 == 0:
+            print('\r', f'Sorting progress: {round(i/total*100)}%', end="")
         word_count = length_of(data_point[column_name])
         if word_count < 50:
             continue
@@ -45,6 +48,7 @@ def sort_by_count(dataset, column_name):
     # Sort the list
     sort_criteria = lambda instance: instance['word_count']
     new_dataset.sort(key=sort_criteria, reverse=True)
+    print()
 
     return new_dataset
 
@@ -98,11 +102,13 @@ def generate_abstracts(quantity, data, target_file_name, target_dir_path="./", s
         writer = csv.writer(f)
         writer.writerow(['title', 'real_abstract', 'real_word_count', 'generated_abstract', 'generated_word_count'])
 
+    # Reverse if set
+    if not iterate_forward:
+        data.reverse()
+
     # Generation loop
-    for i in range(start):
-        print('\r', f'Progress: {i}/{quantity}', end="")
-        if not iterate_forward:
-            data.reverse()
+    for i in range(start, start+quantity):
+        print('\r', f'Generated: {i}/{quantity}', end="")
 
         # Set title, abstract and word count goal
         title = data[i]['title']
@@ -127,7 +133,7 @@ def generate_abstracts(quantity, data, target_file_name, target_dir_path="./", s
             generated_word_count = length_of(generated_abstract)
 
             # Write to CSV
-            with open(path_to_csv, 'w') as f:
+            with open(path_to_csv, 'a') as f:
                 writer = csv.writer(f)
                 writer.writerow(
                     [title, real_abstract, real_word_count, generated_abstract, generated_word_count])
@@ -147,6 +153,7 @@ def get_models():
     }
 
     response = requests.get(url, headers=headers)
+
     # Check if the request was successful
     if response.status_code == 200:
         # Extract the generated text
@@ -163,9 +170,7 @@ sorted_dataset = sort_by_count(dataset, 'abstract')
 # for i in range(0, -10, -1):
 # print(f'\nWord_count: {sorted_dataset[i]["word_count"]}\nTitle: {sorted_dataset[i]["title"]}')
 
-generate_abstracts(quantity=5,
+generate_abstracts(quantity=1000,
                    data=sorted_dataset,
                    target_file_name='research_abstracts',
-                   target_dir_path='./../../datasets/research-abstracts',
-                   iterate_forward=False,
-                   start=1000)
+                   target_dir_path='./../../datasets/origins/research-abstracts')
