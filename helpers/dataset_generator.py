@@ -1,8 +1,14 @@
 import requests
 import datasets as ds
+import csv
+import os
 import re
 import json
 from pathlib import Path
+
+
+def length_of(string):
+    return len(re.findall(r'\w+', string))
 
 
 def sort_by_count(dataset, column_name):
@@ -26,7 +32,9 @@ def sort_by_count(dataset, column_name):
 
     # Format data_points and retrieve word_count
     for data_point in dataset:
-        word_count = len(re.findall(r'\w+', data_point[column_name]))
+        word_count = length_of(data_point[column_name])
+        if word_count < 50:
+            continue
 
         new_dataset.append({
             'title': data_point['title'],
@@ -41,26 +49,29 @@ def sort_by_count(dataset, column_name):
     return new_dataset
 
 
-def generate_abstracts(quantity, abstracts):
-    """Gets and prints the spreadsheet's header columns
+def generate_abstracts(quantity, data, target_file_name, target_dir_path="./", start=0, iterate_forward=True):
+    """Generates scientific abstracts from Open-AI's ChatGPT-API using the GPT-turbo-3.5-0301 model.
+        Continuously writes to CSV incase bad API-responses.
 
         Parameters
         ----------
-        file_loc : str
-            The file location of the spreadsheet
-        print_cols : bool, optional
-            A flag used to print the columns to the console (default is
-            False)
-
-        Returns
-        -------
-        list
-            a list of strings used that are the header columns
-        """
+        quantity : int
+            How many samples to generate.
+        data : list[dict]
+            A list of dictionaries holding a 'title'- and 'word count'-fields to generate an abstract from.
+        target_file_name: str
+            Name of the csv-file
+        target_dir_path: str
+            Path to the target directory for the reformatted dataset.
+        start : int, optional
+            Index of the data-list from which the generation should start from (inclusive).
+        iterate_forward : bool, optional
+            Iteration-direction when generating samples from data-list.
+    """
 
     # Set up the API key and endpoint
-    api_key = "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"
-    url = "https://api.openai.com/v1/engines/davinci-codex/completions"
+    api_key = Path('../../api-keys/openai_key').read_text()
+    url = "https://api.openai.com/v1/chat/completions"
 
     # Set up headers for the request
     headers = {
@@ -68,27 +79,80 @@ def generate_abstracts(quantity, abstracts):
         "Authorization": f"Bearer {api_key}"
     }
 
-    # Set up the input prompt
-    prompt = Path('chatgpt-prompt.txt').read_text()
-    print(prompt)
+    # Set up the input prompts
+    with open('chatgpt-prompt.json') as file:
+        prompts = json.load(file)
+    system_prompt = prompts['system_instruction']
+    user_prompt = prompts['user_base_instruction']
 
-    # Set up parameters for the API call
-    data = {
-        "prompt": prompt,
-        "max_tokens": 100,
-        "n": 1,
-        "stop": None,
-        "temperature": 1.0
+    # Initiate CSV
+    path_to_csv = target_dir_path + "/" + target_file_name + ".csv"
+    if Path(path_to_csv).is_file():
+        print(
+            "Security measure: This file already exists. Pick another filename or delete this manually if you wish "
+            "to overwrite it.")
+        return
+
+    os.makedirs(target_dir_path, exist_ok=True)
+    with open(path_to_csv, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(['title', 'real_abstract', 'real_word_count', 'generated_abstract', 'generated_word_count'])
+
+    # Generation loop
+    for i in range(start):
+        print('\r', f'Progress: {i}/{quantity}', end="")
+        if not iterate_forward:
+            data.reverse()
+
+        # Set title, abstract and word count goal
+        title = data[i]['title']
+        real_abstract = data[i]['text']
+        real_word_count = data[i]['word_count']
+        user_prompt += f'Title: {title}\nWord count goal: {real_word_count}'
+
+        # Set up parameters for the API-call
+        data = {
+            "model": "gpt-3.5-turbo",
+            "messages": [{"role": "system", "content": system_prompt},
+                         {"role": "user", "content": user_prompt}
+                         ],
+        }
+
+        # Make the API call
+        response = requests.post(url, headers=headers, json=data)
+
+        if response.status_code == 200:
+            # Extract the generated text and its word count
+            generated_abstract = response.json()["choices"][0]["message"]['content']
+            generated_word_count = length_of(generated_abstract)
+
+            # Write to CSV
+            with open(path_to_csv, 'w') as f:
+                writer = csv.writer(f)
+                writer.writerow(
+                    [title, real_abstract, real_word_count, generated_abstract, generated_word_count])
+        else:
+            print("Error:", response.status_code, response.text)
+            return  # Quit if something fails to not waste API-usage
+
+
+def get_models():
+    api_key = Path('../../api-keys/openai_key').read_text()
+    url = "https://api.openai.com/v1/models"
+
+    # Set up headers for the request
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
     }
 
-    # Make the API call
-    response = requests.post(url, headers=headers, json=data)
-
+    response = requests.get(url, headers=headers)
     # Check if the request was successful
     if response.status_code == 200:
         # Extract the generated text
-        generated_text = response.json()["choices"][0]["text"]
-        print("Generated text:", generated_text)
+        generated_text = response.json()["data"]
+        for data_point in generated_text:
+            print(data_point)
     else:
         print("Error:", response.status_code, response.text)
 
@@ -96,5 +160,12 @@ def generate_abstracts(quantity, abstracts):
 dataset = ds.load_dataset("gfissore/arxiv-abstracts-2021")['train']
 sorted_dataset = sort_by_count(dataset, 'abstract')
 
-for i in range(0, -10, -1):
-    print(f'\nWord_count: {sorted_dataset[i]["word_count"]}\nTitle: {sorted_dataset[i]["title"]}')
+# for i in range(0, -10, -1):
+# print(f'\nWord_count: {sorted_dataset[i]["word_count"]}\nTitle: {sorted_dataset[i]["title"]}')
+
+generate_abstracts(quantity=5,
+                   data=sorted_dataset,
+                   target_file_name='research_abstracts',
+                   target_dir_path='./../../datasets/research-abstracts',
+                   iterate_forward=False,
+                   start=1000)

@@ -26,7 +26,6 @@ def reformat(source_csv_path, real_label, generated_label, target_dir_path, targ
     with open(target_dir_path + "/" + target_file_name + ".csv", 'w') as f:
         writer = csv.writer(f)
         writer.writerow(fields)
-        writer.writerows(formatted_data)
 
     print(f"Reformatting complete. Number of entries in reformatted dataset: {len(formatted_data)}")
 
