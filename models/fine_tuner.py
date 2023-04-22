@@ -11,7 +11,7 @@ def compute_metrics(eval_pred):
     metric2 = evaluate.load("precision")
     metric3 = evaluate.load("recall")
     metric4 = evaluate.load("f1")
-    
+
     logits, labels = eval_pred
     predictions = np.argmax(logits, axis=-1)
     accuracy = metric1.compute(predictions=predictions, references=labels)["accuracy"]
@@ -23,7 +23,8 @@ def compute_metrics(eval_pred):
 
 # Fine-tunes a pre-trained model on a specific dataset
 class FineTuner:
-    def __init__(self, model_name, dataset, num_epochs=5, num_train_samples=None, num_validation_samples=None, max_tokenized_length=None):
+    def __init__(self, model_name, dataset, num_epochs=5, num_train_samples=None, num_validation_samples=None,
+                 max_tokenized_length=None):
         self.dataset = dataset
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
@@ -36,7 +37,10 @@ class FineTuner:
         self.trainer = self.init_trainer()
 
     def tokenize_function(self, examples):
-        return self.tokenizer(examples["text"], padding='max_length', truncation=True, max_length=self.max_tokenized_length)
+        return self.tokenizer(examples["text"],
+                              padding='max_length',
+                              truncation=True,
+                              max_length=self.max_tokenized_length)
 
     def init_trainer(self):
         tokenized_datasets = self.dataset.map(self.tokenize_function, batched=True)
@@ -46,21 +50,21 @@ class FineTuner:
         validation_dataset = tokenized_datasets["validation"].shuffle(seed=42)
 
         # Select subsets for faster training
-        if (self.num_train_samples):
+        if self.num_train_samples:
             train_dataset = train_dataset.select(range(self.num_train_samples))
-        if (self.num_validation_samples):
+        if self.num_validation_samples:
             validation_dataset = validation_dataset.select(range(self.num_validation_samples))
 
-        training_args = TrainingArguments(output_dir="./outputs/"+self.model.config._name_or_path + "-tuned",
+        training_args = TrainingArguments(output_dir="./outputs/" + self.model.config._name_or_path + "-tuned",
                                           logging_dir="./logs",
                                           logging_steps=100,
                                           logging_first_step=True,
                                           evaluation_strategy="steps",
                                           save_strategy='epoch',
-                                          optim='adamw_torch', 
+                                          optim='adamw_torch',
                                           num_train_epochs=self.num_epochs,
                                           auto_find_batch_size=True,
-        )
+                                          )
         trainer = Trainer(
             model=self.model,
             tokenizer=self.tokenizer,
@@ -87,7 +91,7 @@ class FineTuner:
             text = data_point["text"]
 
             # Encode input text and labels
-            encoding = self.tokenizer(text, return_tensors="pt", padding="max_length", truncation=True)
+            encoding = self.tokenizer(text_target=text, return_tensors="pt", padding="max_length", truncation=True)
             encoding = {k: v.to(self.model.device) for k, v in encoding.items()}
 
             # Execution
@@ -98,6 +102,7 @@ class FineTuner:
             # Calculate probabilities and find the most likely label
             probabilities = torch.softmax(logits.cpu(), dim=-1)
             most_likely_label_index = torch.argmax(probabilities, dim=-1).item()
+            print(most_likely_label_index)
             most_likely_label = self.trainer.label_names[most_likely_label_index]
             score = probabilities[most_likely_label_index].item()
 
