@@ -54,7 +54,7 @@ def sort_by_count(dataset, column_name):
 
 
 def generate_abstracts(quantity, data, target_file_name, target_dir_path="./", start=0, iterate_forward=True):
-    """Generates scientific abstracts from Open-AI's ChatGPT-API using the GPT-turbo-3.5-0301 model.
+    """Generates scientific abstracts from Open-AI's ChatGPT-API using the GPT-turbo-3.5 model.
         Continuously writes to CSV incase bad API-responses.
 
         Parameters
@@ -106,6 +106,7 @@ def generate_abstracts(quantity, data, target_file_name, target_dir_path="./", s
     if not iterate_forward:
         data.reverse()
 
+    print()
     # Generation loop
     for i in range(start, start+quantity):
         print('\r', f'Generated: {i}/{quantity}', end="")
@@ -117,7 +118,7 @@ def generate_abstracts(quantity, data, target_file_name, target_dir_path="./", s
         user_prompt += f'Title: {title}\nWord count goal: {real_word_count}'
 
         # Set up parameters for the API-call
-        data = {
+        content = {
             "model": "gpt-3.5-turbo",
             "messages": [{"role": "system", "content": system_prompt},
                          {"role": "user", "content": user_prompt}
@@ -125,7 +126,7 @@ def generate_abstracts(quantity, data, target_file_name, target_dir_path="./", s
         }
 
         # Make the API call
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json=content)
 
         if response.status_code == 200:
             # Extract the generated text and its word count
