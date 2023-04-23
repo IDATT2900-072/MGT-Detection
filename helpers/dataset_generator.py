@@ -1,3 +1,5 @@
+import random
+
 import requests
 import datasets as ds
 import csv
@@ -6,14 +8,19 @@ import re
 import json
 from pathlib import Path
 
+# Constants
+API_KEY = Path('../../api-keys/openai_key').read_text()
+GPT_API_URL = "https://api.openai.com/v1/models"
+MODEL = "gpt-3.5-turbo-0301"
+
 
 def length_of(string):
     return len(re.findall(r'\w+', string))
 
 
-def sort_by_count(dataset, column_name):
+def count_and_reformat(dataset, column_name):
     """
-    Sorts a column of a dataset by the word count, largest to smallest.
+    Counts text length in words for every data point in a dataset column.
 
     Parameters
     ----------
@@ -25,7 +32,7 @@ def sort_by_count(dataset, column_name):
     Returns
     -------
     list
-        A sorted list of dictionaries containing 'title', 'text' and 'word_count'
+        A list of dictionaries containing 'title', 'text' and 'word_count'
     """
 
     new_dataset = []
@@ -34,7 +41,7 @@ def sort_by_count(dataset, column_name):
     for i, data_point in enumerate(dataset):
         total = len(dataset)
         if i % 10000 == 0:
-            print('\r', f'Sorting progress: {round(i/total*100)}%', end="")
+            print('\r', f'Sorting progress: {round(i / total * 100)}%', end="")
         word_count = length_of(data_point[column_name])
         if word_count < 50:
             continue
@@ -45,133 +52,170 @@ def sort_by_count(dataset, column_name):
             'word_count': word_count,
         })
 
-    # Sort the list
-    sort_criteria = lambda instance: instance['word_count']
-    new_dataset.sort(key=sort_criteria, reverse=True)
-    print()
-
     return new_dataset
 
 
-def generate_abstracts(quantity, data, target_file_name, target_dir_path="./", start=0, iterate_forward=True):
-    """Generates scientific abstracts from Open-AI's ChatGPT-API using the GPT-turbo-3.5 model.
-        Continuously writes to CSV incase bad API-responses.
-
-        Parameters
-        ----------
-        quantity : int
-            How many samples to generate.
-        data : list[dict]
-            A list of dictionaries holding a 'title'- and 'word count'-fields to generate an abstract from.
-        target_file_name: str
-            Name of the csv-file
-        target_dir_path: str
-            Path to the target directory for the reformatted dataset.
-        start : int, optional
-            Index of the data-list from which the generation should start from (inclusive).
-        iterate_forward : bool, optional
-            Iteration-direction when generating samples from data-list.
+def filter_list(data, word_count_min, word_count_max, quantity):
     """
+    Filters the list, removing entire with a word_count outside the specified rang, and randomly selects the desired
+    quantity.
 
-    # Set up the API key and endpoint
-    api_key = Path('../../api-keys/openai_key').read_text()
-    url = "https://api.openai.com/v1/chat/completions"
+    Parameters
+    ----------
+    data : list[dict]
+        A list of dictionaries holding at minimum a 'word_count' field.
+    word_count_min : int
+        Minimum accepted word count, inclusive
+    word_count_max : int
+        Maximum accepted word count, inclusive
+    quantity : int
+        The amount of selected elements the filtered list should contain.
 
-    # Set up headers for the request
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
-    }
+    Returns
+    -------
+    list
+        A list with the length of 'quantity' containing the filtered elements from the original data-list. The elements
+        are randomly selected from the filtered domain and a sorted in descending order based on their word_count value.
+    """
+    # Filter and select
+    filtered_dataset = list(filter(lambda instance: word_count_min <= instance['word_count'] <= word_count_max, data))
+    random.seed(42)
+    filtered_dataset = random.choices(filtered_dataset, k=quantity)
+
+    # Sort in descending manner
+    filtered_dataset.sort(key=lambda instance: instance['word_count'], reverse=True)
+    return filtered_dataset
+
+
+def generate_abstracts(data, target_file_name, target_dir_path="./", start=0, iterate_forward=True):
+    """
+    Generates scientific abstracts from Open-AI's ChatGPT-API using the GPT-turbo-3.5 model.
+    If file already exists, generated abstracts will be appended to the file. The previous content of the file will not
+    be removed unless done manually. This is a precaution to prevent unintended loss of previous generations.
+    Continuously writes to CSV incase bad API-responses.
+
+    Parameters
+    ----------
+    data : list[dict]
+        A list of dictionaries holding a 'title'- and 'word count'-fields to generate an abstract from.
+    target_file_name: str
+        Name of the csv-file
+    target_dir_path: str
+        Path to the target directory for the reformatted dataset.
+    start : int, optional
+        Index of the data-list from which the generation should start from (inclusive).
+    iterate_forward : bool, optional
+        Iteration-direction when generating samples from data-list.
+    """
 
     # Set up the input prompts
     with open('chatgpt-prompt.json') as file:
         prompts = json.load(file)
     system_prompt = prompts['system_instruction']
-    user_prompt = prompts['user_base_instruction']
+    user_base_prompt = prompts['user_base_instruction']
+    expand_base_prompt = prompts['user_expand_instruction']
 
     # Initiate CSV
     path_to_csv = target_dir_path + "/" + target_file_name + ".csv"
-    if Path(path_to_csv).is_file():
-        print(
-            "Security measure: This file already exists. Pick another filename or delete this manually if you wish "
-            "to overwrite it.")
-        return
+    if not Path(path_to_csv).is_file():
+        print("No file already exists. Creating blank CSV\n")
+        os.makedirs(target_dir_path, exist_ok=True)
+        with open(path_to_csv, 'w') as f:
+            writer = csv.writer(f)
+            writer.writerow(['title', 'real_abstract', 'real_word_count', 'generated_abstract', 'generated_word_count'])
+    else:
+        print("CSV-file already exists. Will append new rows to existing document. Cancel execution if this is not "
+              "intended.\n")
 
-    os.makedirs(target_dir_path, exist_ok=True)
-    with open(path_to_csv, 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(['title', 'real_abstract', 'real_word_count', 'generated_abstract', 'generated_word_count'])
-
-    # Reverse if set
+        # Reverse data-list if set
     if not iterate_forward:
         data.reverse()
 
-    print()
     # Generation loop
-    for i in range(start, start+quantity):
-        print('\r', f'Generated: {i}/{quantity}', end="")
+    data_length = len(data)
+    for i in range(start, data_length):
+        print('\r', f'Generated: {i + 1}/{data_length - start}', end="")
 
         # Set title, abstract and word count goal
         title = data[i]['title']
         real_abstract = data[i]['text']
         real_word_count = data[i]['word_count']
-        user_prompt += f'Title: {title}\nWord count goal: {real_word_count}'
+        user_prompt = user_base_prompt.format(title=title, word_count_goal=real_word_count)
 
-        # Set up parameters for the API-call
-        content = {
-            "model": "gpt-3.5-turbo",
-            "messages": [{"role": "system", "content": system_prompt},
-                         {"role": "user", "content": user_prompt}
-                         ],
-        }
+        generated_abstract, generated_word_count = generate_GPT_abstract(system_prompt, user_prompt)
 
-        # Make the API call
-        response = requests.post(url, headers=headers, json=content)
+        # Expand abstract if 20% smaller than original, max 3 attempts
+        expansion_attempts = 0
+        while generated_word_count < real_word_count * 0.8 or expansion_attempts < 3:
+            expand_prompt = expand_base_prompt.format(generated_abstract=generated_abstract,
+                                                      generated_word_count=generated_word_count,
+                                                      title=title,
+                                                      word_count_goal=real_word_count)
+            generated_abstract, generated_word_count = generate_GPT_abstract(system_prompt, expand_prompt)
+            expansion_attempts += 1
 
-        if response.status_code == 200:
-            # Extract the generated text and its word count
-            generated_abstract = response.json()["choices"][0]["message"]['content']
-            generated_word_count = length_of(generated_abstract)
+        # Write to CSV
+        with open(path_to_csv, 'a') as f:
+            writer = csv.writer(f)
+            writer.writerow(
+                [title, real_abstract, real_word_count, generated_abstract, generated_word_count])
 
-            # Write to CSV
-            with open(path_to_csv, 'a') as f:
-                writer = csv.writer(f)
-                writer.writerow(
-                    [title, real_abstract, real_word_count, generated_abstract, generated_word_count])
-        else:
-            print("Error:", response.status_code, response.text)
-            return  # Quit if something fails to not waste API-usage
+
+def generate_GPT_abstract(system_prompt, user_prompt):
+    # Set up content for the API-call
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API_KEY}"
+    }
+    content = {
+        "model": MODEL,
+        "messages": [{"role": "system", "content": system_prompt},
+                     {"role": "user", "content": user_prompt}],
+    }
+
+    # Make the API call
+    response = requests.post(GPT_API_URL, headers=headers, json=content)
+
+    if response.status_code == 200:
+        # Extract the generated text and its word count
+        generated_abstract = response.json()["choices"][0]["message"]['content']
+        generated_word_count = length_of(generated_abstract)
+        return generated_abstract, generated_word_count
+    else:
+        # Quit if something fails to not waste API-usage
+        raise RuntimeError(f"API-error: {response.status_code}, {response.text}")
 
 
 def get_models():
-    api_key = Path('../../api-keys/openai_key').read_text()
-    url = "https://api.openai.com/v1/models"
-
     # Set up headers for the request
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
+        "Authorization": f"Bearer {API_KEY}"
     }
 
-    response = requests.get(url, headers=headers)
+    response = requests.get(GPT_API_URL, headers=headers)
 
     # Check if the request was successful
     if response.status_code == 200:
         # Extract the generated text
-        generated_text = response.json()["data"]
-        for data_point in generated_text:
-            print(data_point)
+        response_dict = response.json()["data"]
+        for model_specs in response_dict:
+            print(model_specs)
     else:
         print("Error:", response.status_code, response.text)
 
 
+# Code execution
 dataset = ds.load_dataset("gfissore/arxiv-abstracts-2021")['train']
-sorted_dataset = sort_by_count(dataset, 'abstract')
+reformatted_dataset = count_and_reformat(dataset, 'abstract')
+dataset_600_700 = filter_list(data=reformatted_dataset,
+                              word_count_min=600,
+                              word_count_max=70,
+                              quantity=200)
 
-# for i in range(0, -10, -1):
-# print(f'\nWord_count: {sorted_dataset[i]["word_count"]}\nTitle: {sorted_dataset[i]["title"]}')
+for data_point in dataset_600_700:
+    print(data_point['word_count'])
 
-generate_abstracts(quantity=1000,
-                   data=sorted_dataset,
-                   target_file_name='research_abstracts',
-                   target_dir_path='./../../datasets/origins/research-abstracts')
+# generate_abstracts(data=dataset_600_700,
+#                    target_file_name='research_abstracts',
+#                    target_dir_path='./../../datasets/origins/research-abstracts')
