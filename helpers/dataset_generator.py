@@ -40,8 +40,8 @@ def count_and_reformat(dataset, column_name):
     # Format data_points and retrieve word_count
     for i, data_point in enumerate(dataset):
         total = len(dataset)
-        if i % 10000 == 0:
-            print('\r', f'Sorting progress: {round(i / total * 100)}%', end="")
+        if i % int(total/100) == 0:
+            print('\r', f'Counting words: {round(i / total * 100)}%', end="")
         word_count = length_of(data_point[column_name])
         if word_count < 50:
             continue
@@ -77,8 +77,18 @@ def filter_list(data, word_count_min, word_count_max, quantity):
         A list with the length of 'quantity' containing the filtered elements from the original data-list. The elements
         are randomly selected from the filtered domain and a sorted in descending order based on their word_count value.
     """
+    if word_count_min > word_count_max:
+        raise Exception("word_count_min cannot be larger than word_count_max.")
     # Filter and select
     filtered_dataset = list(filter(lambda instance: word_count_min <= instance['word_count'] <= word_count_max, data))
+    filter_domain_size = len(filtered_dataset)
+    print(f'\nFound {filter_domain_size} elements matching the filter.')
+
+    if filter_domain_size < quantity:
+        print(f"Number of filtered elements ({filter_domain_size}), is less than desired quantity ({quantity}).")
+        print(f'Returned list will therefore be of length {filter_domain_size}.')
+        quantity = filter_domain_size
+
     random.seed(42)
     filtered_dataset = random.choices(filtered_dataset, k=quantity)
 
@@ -144,9 +154,9 @@ def generate_abstracts(data, target_file_name, target_dir_path="./", start=0, it
 
         generated_abstract, generated_word_count = generate_GPT_abstract(system_prompt, user_prompt)
 
-        # Expand abstract if 20% smaller than original, max 3 attempts
+        # Expand abstract if 10% smaller than original, max 3 attempts
         expansion_attempts = 0
-        while generated_word_count < real_word_count * 0.8 or expansion_attempts < 3:
+        while generated_word_count < real_word_count * 0.9 or expansion_attempts < 3:
             expand_prompt = expand_base_prompt.format(generated_abstract=generated_abstract,
                                                       generated_word_count=generated_word_count,
                                                       title=title,
@@ -203,19 +213,3 @@ def get_models():
             print(model_specs)
     else:
         print("Error:", response.status_code, response.text)
-
-
-# Code execution
-dataset = ds.load_dataset("gfissore/arxiv-abstracts-2021")['train']
-reformatted_dataset = count_and_reformat(dataset, 'abstract')
-dataset_600_700 = filter_list(data=reformatted_dataset,
-                              word_count_min=600,
-                              word_count_max=70,
-                              quantity=200)
-
-for data_point in dataset_600_700:
-    print(data_point['word_count'])
-
-# generate_abstracts(data=dataset_600_700,
-#                    target_file_name='research_abstracts',
-#                    target_dir_path='./../../datasets/origins/research-abstracts')
