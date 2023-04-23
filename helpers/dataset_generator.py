@@ -10,7 +10,7 @@ from pathlib import Path
 
 # Constants
 API_KEY = Path('../../api-keys/openai_key').read_text()
-GPT_API_URL = "https://api.openai.com/v1/models"
+GPT_API_URL = "https://api.openai.com/v1/chat/completions"
 MODEL = "gpt-3.5-turbo-0301"
 
 
@@ -40,7 +40,7 @@ def count_and_reformat(dataset, column_name):
     # Format data_points and retrieve word_count
     for i, data_point in enumerate(dataset):
         total = len(dataset)
-        if i % int(total/100) == 0:
+        if i % int(total / 100) == 0:
             print('\r', f'Counting words: {round(i / total * 100)}%', end="")
         word_count = length_of(data_point[column_name])
         if word_count < 50:
@@ -86,18 +86,19 @@ def filter_list(data, word_count_min, word_count_max, quantity):
 
     if filter_domain_size < quantity:
         print(f"Number of filtered elements ({filter_domain_size}), is less than desired quantity ({quantity}).")
-        print(f'Returned list will therefore be of length {filter_domain_size}.')
         quantity = filter_domain_size
 
+    # Select random elements
     random.seed(42)
     filtered_dataset = random.choices(filtered_dataset, k=quantity)
+    print(f'Returned list is of length {len(filtered_dataset)}.')
 
     # Sort in descending manner
     filtered_dataset.sort(key=lambda instance: instance['word_count'], reverse=True)
     return filtered_dataset
 
 
-def generate_abstracts(data, target_file_name, target_dir_path="./", start=0, iterate_forward=True):
+def generate_abstracts(data, target_file_name, target_dir_path="./", start_index=0, iterate_forward=True, debug=False):
     """
     Generates scientific abstracts from Open-AI's ChatGPT-API using the GPT-turbo-3.5 model.
     If file already exists, generated abstracts will be appended to the file. The previous content of the file will not
@@ -112,10 +113,12 @@ def generate_abstracts(data, target_file_name, target_dir_path="./", start=0, it
         Name of the csv-file
     target_dir_path: str
         Path to the target directory for the reformatted dataset.
-    start : int, optional
+    start_index : int, optional
         Index of the data-list from which the generation should start from (inclusive).
     iterate_forward : bool, optional
         Iteration-direction when generating samples from data-list.
+    debug : bool, optional
+        If set to True, API-calls are skipped.
     """
 
     # Set up the input prompts
@@ -143,8 +146,8 @@ def generate_abstracts(data, target_file_name, target_dir_path="./", start=0, it
 
     # Generation loop
     data_length = len(data)
-    for i in range(start, data_length):
-        print('\r', f'Generated: {i + 1}/{data_length - start}', end="")
+    for i in range(start_index, data_length):
+        print('\r', f'Generating: {i + 1}/{data_length - start_index}', end="")
 
         # Set title, abstract and word count goal
         title = data[i]['title']
@@ -152,23 +155,20 @@ def generate_abstracts(data, target_file_name, target_dir_path="./", start=0, it
         real_word_count = data[i]['word_count']
         user_prompt = user_base_prompt.format(title=title, word_count_goal=real_word_count)
 
-        generated_abstract, generated_word_count = generate_GPT_abstract(system_prompt, user_prompt)
+        # If debugging, skips API-calls
+        if debug:
+            continue
 
-        # Expand abstract if 10% smaller than original, max 3 attempts
-        expansion_attempts = 0
-        while generated_word_count < real_word_count * 0.9 or expansion_attempts < 3:
-            expand_prompt = expand_base_prompt.format(generated_abstract=generated_abstract,
-                                                      generated_word_count=generated_word_count,
-                                                      title=title,
-                                                      word_count_goal=real_word_count)
-            generated_abstract, generated_word_count = generate_GPT_abstract(system_prompt, expand_prompt)
-            expansion_attempts += 1
+        # Generate abstract
+        generated_abstract, generated_word_count = generate_GPT_abstract(system_prompt, user_prompt)
 
         # Write to CSV
         with open(path_to_csv, 'a') as f:
             writer = csv.writer(f)
             writer.writerow(
                 [title, real_abstract, real_word_count, generated_abstract, generated_word_count])
+
+    print("Abstract generation complete.")
 
 
 def generate_GPT_abstract(system_prompt, user_prompt):
@@ -203,7 +203,7 @@ def get_models():
         "Authorization": f"Bearer {API_KEY}"
     }
 
-    response = requests.get(GPT_API_URL, headers=headers)
+    response = requests.get("https://api.openai.com/v1/models", headers=headers)
 
     # Check if the request was successful
     if response.status_code == 200:

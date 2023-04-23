@@ -1,5 +1,5 @@
 {
   "system_instruction": "You are a helpful assistant which produces abstracts for research papers based on a title and a length. Your task is to produce the abstract which suits the title, and is of the desired length in words.",
-  "user_base_instruction": "Title: \"{title}\"\nAbstract length: {word_count} words\n\n---\n\nAbove is the title of a scientific research paper and the length of its abstract. Using a formal/academic language, write a new abstract which matches title and has a length of {word_count} words. Do not answer with anything else than the abstract.",
+  "user_base_instruction": "Title: \"{title}\"\nAbstract length: {word_count_goal} words\n\n---\n\nAbove is the title of a scientific research paper and the length of its abstract. Using a formal/academic language, write a new abstract which matches title and has a length of {word_count_goal} words. Do not answer with anything else than the abstract.",
   "user_expand_instruction": "{generated_abstract}\n\n---\n\nThis is the abstract of a research paper named \"{title}\". It currently has a length of {generated_word_count} words. Expand it such that has a minimum length of {word_count_goal}. Only answer with the revised abstract."
 }
