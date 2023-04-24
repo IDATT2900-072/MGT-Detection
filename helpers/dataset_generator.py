@@ -1,12 +1,13 @@
 import random
 
 import requests
-import datasets as ds
+import pandas as pd
 import csv
 import os
 import re
 import json
 from pathlib import Path
+from datasets import Dataset
 
 # Constants
 API_KEY = Path('../../api-keys/openai_key').read_text()
@@ -18,21 +19,26 @@ def length_of(string):
     return len(re.findall(r'\w+', string))
 
 
-def count_and_reformat(dataset, column_name):
+def count_and_reformat(dataset, count_column, retain_columns):
     """
-    Counts text length in words for every data point in a dataset column.
+    Counts text length in words for every data point in 'column_name'-column and creates a new list with the specified
+    columns to be retained, in addition to a word count column as the last column.
 
     Parameters
     ----------
     dataset : dict
         Dataset to extract texts from
-    column_name : str
+    count_column : str
         Column name containing the texts which are to be extracted.
+    retain_columns : list[str]
+        A list containing the names of the columns which are to be retained in the returned list. All other columns
+        will be omitted.
 
     Returns
     -------
     list
-        A list of dictionaries containing 'title', 'text' and 'word_count'
+        A list of dictionaries containing the columns specified in the 'retain_columns'-parameter, in addition to a
+        word_count-column at the end.
     """
 
     new_dataset = []
@@ -42,22 +48,21 @@ def count_and_reformat(dataset, column_name):
         total = len(dataset)
         if i % int(total / 100) == 0:
             print('\r', f'Counting words: {round(i / total * 100)}%', end="")
-        word_count = length_of(data_point[column_name])
+        word_count = length_of(data_point[count_column])
         if word_count < 50:
             continue
 
-        new_dataset.append({
-            'title': data_point['title'],
-            'text': data_point[column_name],
-            'word_count': word_count,
-        })
+        new_data_point = {}
+        for column in retain_columns:
+            new_data_point[column] = data_point[column]
+        new_data_point['word_count'] = word_count
 
     return new_dataset
 
 
 def filter_list(data, word_count_min, word_count_max, quantity):
     """
-    Filters the list, removing entire with a word_count outside the specified rang, and randomly selects the desired
+    Filters the list, removing entries with a word_count outside the specified range, and randomly selects the desired
     quantity.
 
     Parameters
@@ -90,7 +95,7 @@ def filter_list(data, word_count_min, word_count_max, quantity):
 
     # Select random elements
     random.seed(42)
-    filtered_dataset = random.choices(filtered_dataset, k=quantity)
+    filtered_dataset = random.sample(filtered_dataset, k=quantity)
     print(f'Returned list is of length {len(filtered_dataset)}.')
 
     # Sort in descending manner
@@ -151,7 +156,7 @@ def generate_abstracts(data, target_file_name, target_dir_path="./", start_index
 
         # Set title, abstract and word count goal
         title = data[i]['title']
-        real_abstract = data[i]['text']
+        real_abstract = data[i]['abstract']
         real_word_count = data[i]['word_count']
         user_prompt = user_base_prompt.format(title=title, word_count_goal=real_word_count)
 
