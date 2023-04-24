@@ -3,17 +3,15 @@ import numpy as np
 from datasets import Dataset
 import torch
 import wandb
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer, pipeline
 from typing import Dict
 
 
 class FineTuner:
     """Fine-tunes a pre-trained model on a specific dataset"""
-    def __init__(self, model_name, dataset, 
-                 num_epochs=5, 
-                 max_tokenized_length=None, 
-                 logging_steps=500,
-                 ):
+
+    def __init__(self, model_name, dataset, num_epochs=5, max_tokenized_length=None, logging_steps=500, wandb_logging=True):
+        self.test_dataset = None
         self.dataset = dataset
         self.labels = dataset['train'].features['label'].names
         self.id2label = {0: self.labels[0], 1: self.labels[1]}
@@ -33,14 +31,17 @@ class FineTuner:
         self.trainer = self.init_trainer()
 
         # Initialize Weights and Biases
-        wandb.init(project="IDATT2900-072",
-           config = {
-            'base_model': model_name,
-            'dataset': dataset['train'].config_name,
-            'train_dataset_size': len(dataset['train']),
-            'eval_dataset_size': len(dataset['validation']),
-        })
-
+        if wandb_logging:
+            wandb.init(project="IDATT2900-072",
+                    config={
+                        'base_model': model_name,
+                        'dataset': dataset['train'].config_name,
+                        'train_dataset_size': len(dataset['train']),
+                        'eval_dataset_size': len(dataset['validation']),
+                    })
+        else:
+            os.environ["WANDB_DISABLED"] = "true"
+                       
     def tokenize_function(self, examples):
         return self.tokenizer(text_target=examples["text"],
                               padding='max_length', 
