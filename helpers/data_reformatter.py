@@ -15,7 +15,7 @@ def reformat(source_csv_path, real_label, generated_label, target_dir_path, targ
         :param str target_file_name: Name of the reformatted dataset.
     """
     data = pd.read_csv(source_csv_path, engine="python")
-    fields = ['class label', 'text']
+    fields = ['label', 'text']
     formatted_data = []
 
     for i in range(len(data)):
@@ -26,14 +26,13 @@ def reformat(source_csv_path, real_label, generated_label, target_dir_path, targ
     with open(target_dir_path + "/" + target_file_name + ".csv", 'w') as f:
         writer = csv.writer(f)
         writer.writerow(fields)
-        writer.writerows(formatted_data)
 
     print(f"Reformatting complete. Number of entries in reformatted dataset: {len(formatted_data)}")
 
 
 # Execution queue
-reformat(source_csv_path="../datasets/origins/GPT-wiki-intro.csv",
-        real_label="wiki_intro",
-        generated_label="generated_intro",
-        target_dir_path="../datasets/human-vs-machine",
-        target_file_name="wiki-labeled")
+reformat(source_csv_path="../../datasets/origins/GPT-wiki-intro.csv",
+         real_label="wiki_intro",
+         generated_label="generated_intro",
+         target_dir_path="../../datasets/human-vs-machine",
+         target_file_name="wiki-labeled")
