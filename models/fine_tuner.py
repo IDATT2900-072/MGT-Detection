@@ -5,7 +5,7 @@ import torch
 import wandb
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer, pipeline
 from typing import Dict
-
+import os
 
 class FineTuner:
     """Fine-tunes a pre-trained model on a specific dataset"""
