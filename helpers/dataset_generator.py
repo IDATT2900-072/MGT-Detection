@@ -56,6 +56,7 @@ def count_and_reformat(dataset, count_column, retain_columns):
         for column in retain_columns:
             new_data_point[column] = data_point[column]
         new_data_point['word_count'] = word_count
+        new_dataset.append(new_data_point)
 
     return new_dataset
 
