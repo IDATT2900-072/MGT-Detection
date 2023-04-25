@@ -4,13 +4,13 @@ from datasets import Dataset
 import torch
 import wandb
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer, pipeline
-from typing import Dict
+from typing import Dict, List, Union
 import os
 
 class FineTuner:
     """Fine-tunes a pre-trained model on a specific dataset"""
 
-    def __init__(self, model_name, dataset, num_epochs=5, max_tokenized_length=None, logging_steps=500, wandb_logging=True):
+    def __init__(self, model_name, dataset=None, num_epochs=5, max_tokenized_length=None, logging_steps=500, wandb_logging=True):
         self.test_dataset = None
         self.dataset = dataset
         self.labels = dataset['train'].features['label'].names
@@ -117,35 +117,35 @@ class FineTuner:
             res = {prefix + str(key).replace("test", ""): val for key, val in metrics.items()}
             wandb.log(res)
         return metrics
-
+    
     def classify(self, text):
+        # Initialize pipeline
+        classifier = pipeline("text-classification", model=self.model, tokenizer=self.tokenizer)
+        return classifier(text)
+
+    def predict(self, data: str | List[str]) -> torch.Tensor:
+        """
+        Generates a prediction for the data and returns probabilities as a tensor.
+        """
         # Use GPU if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model.to(device)
 
-        subset = self.dataset["test"].select(range(10))
+        # Encode input text and labels
+        encoding = self.tokenizer(data, return_tensors="pt", padding="max_length", truncation=True)
+        encoding = {k: v.to(self.model.device) for k, v in encoding.items()}
 
-        # Fine-tuned classification on the selected dataset
-        for data_point in subset:
-            text = data_point["text"]
+        # Execution
+        with torch.no_grad():
+            outputs = self.model(encoding['input_ids'])
+            logits = outputs.logits.squeeze()
 
-            # Encode input text and labels
-            encoding = self.tokenizer(text, return_tensors="pt", padding="max_length", truncation=True)
-            encoding = {k: v.to(self.model.device) for k, v in encoding.items()}
-
-            # Execution
-            with torch.no_grad():
-                outputs = self.model(**encoding)
-                logits = outputs.logits.squeeze()
-
-            # Calculate probabilities and find the most likely label
-            probabilities = torch.softmax(logits.cpu(), dim=-1)
-            most_likely_label_index = torch.argmax(probabilities, dim=-1).item()
-            most_likely_label = self.trainer.label_names[most_likely_label_index]
-            score = probabilities[most_likely_label_index].item()
-
-            print(f"Text: {text[:100]}\nPredicted label: {most_likely_label}, Classification Score: {score}\n")
-
+        # Calculate probabilities
+        probabilities = torch.softmax(logits.cpu(), dim=-1)
+        return probabilities
+    
+    def get_labels(self):
+        return self.labels
 
     def __compute_metrics(self, eval_pred):
         """Function for computing evaluation metrics"""
