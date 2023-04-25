@@ -1,13 +1,12 @@
 import random
 
 import requests
-import pandas as pd
 import csv
 import os
 import re
 import json
 from pathlib import Path
-from datasets import Dataset
+import time
 
 # Constants
 API_KEY = Path('../../api-keys/openai_key').read_text()
@@ -22,7 +21,8 @@ def length_of(string):
 def count_and_reformat(dataset, count_column, retain_columns):
     """
     Counts text length in words for every data point in 'column_name'-column and creates a new list with the specified
-    columns to be retained, in addition to a word count column as the last column.
+    columns to be retained, in addition to a word count column as the last column. If one of the retained columns is
+    named 'word_count', it must be renamed before execution, else it will be overwritten by this functions word_count.
 
     Parameters
     ----------
@@ -177,7 +177,7 @@ def generate_abstracts(data, target_file_name, target_dir_path="./", start_index
     print("Abstract generation complete.")
 
 
-def generate_GPT_abstract(system_prompt, user_prompt):
+def generate_GPT_abstract(system_prompt, user_prompt, attempts=0):
     # Set up content for the API-call
     headers = {
         "Content-Type": "application/json",
@@ -198,8 +198,11 @@ def generate_GPT_abstract(system_prompt, user_prompt):
         generated_word_count = length_of(generated_abstract)
         return generated_abstract, generated_word_count
     else:
-        # Quit if something fails to not waste API-usage
-        raise RuntimeError(f"API-error: {response.status_code}, {response.text}")
+        if attempts < 3:
+            time.sleep(5)
+            generate_GPT_abstract(system_prompt, user_prompt, attempts+1)
+        else:
+            raise RuntimeError(f"API-error: {response.status_code}, {response.text}")
 
 
 def get_models():
