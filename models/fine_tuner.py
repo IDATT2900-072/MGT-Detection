@@ -38,6 +38,7 @@ class FineTuner:
                         'dataset': dataset['train'].config_name,
                         'train_dataset_size': len(dataset['train']),
                         'eval_dataset_size': len(dataset['validation']),
+                        'max_tokenized_length': self.max_tokenized_length,
                     })
         else:
             os.environ["WANDB_DISABLED"] = "true"
