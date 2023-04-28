@@ -10,7 +10,7 @@ import os
 class FineTuner:
     """Fine-tunes a pre-trained model on a specific dataset"""
 
-    def __init__(self, model_name, dataset=None, num_epochs=5, max_tokenized_length=None, logging_steps=500, wandb_logging=True):
+    def __init__(self, model_name, dataset, num_epochs=5, max_tokenized_length=None, logging_steps=500, wandb_logging=True):
         self.test_dataset = None
         self.dataset = dataset
         self.labels = dataset['train'].features['label'].names
@@ -38,6 +38,7 @@ class FineTuner:
                         'dataset': dataset['train'].config_name,
                         'train_dataset_size': len(dataset['train']),
                         'eval_dataset_size': len(dataset['validation']),
+                        'max_tokenized_length': self.max_tokenized_length,
                     })
         else:
             os.environ["WANDB_DISABLED"] = "true"
@@ -123,7 +124,7 @@ class FineTuner:
         classifier = pipeline("text-classification", model=self.model, tokenizer=self.tokenizer)
         return classifier(text)
 
-    def predict(self, data: str | List[str]) -> torch.Tensor:
+    def predict(self, data: Union[str, List[str]]) -> torch.Tensor:
         """
         Generates a prediction for the data-processing and returns probabilities as a tensor.
         """
