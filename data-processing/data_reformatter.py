@@ -4,7 +4,7 @@ import os
 import re
 
 
-def reformat_for_classification(source_csv_path, real_label, generated_label, target_dir_path, target_file_name):
+def reformat_supervised_learning(source_csv_path, real_label, generated_label, target_dir_path, target_file_name):
     """
     Reformats an origin dataset into a two-column dataset consisting of a text and its corresponding binary class
     label, omitting redundant features of the origin dataset.
@@ -108,7 +108,7 @@ def clean_text_column(dirty_columns, cleaning_func, source_csv_path, target_dir_
 
 
 # Execution queue
-# reformat_for_classification(source_csv_path="../../datasets/origins/GPT-wiki-intro.csv",
+# reformat_supervised_learning(source_csv_path="../../datasets/origins/GPT-wiki-intro.csv",
 #                             real_label="wiki_intro",
 #                             generated_label="generated_intro",
 #                             target_dir_path="../../datasets/human-vs-machine",
@@ -121,9 +121,9 @@ def clean_text_column(dirty_columns, cleaning_func, source_csv_path, target_dir_
 #                   target_dir_path="../../datasets/origins/research-abstracts",
 #                   target_file_name="research_abstracts_cleaned")
 
-reformat_for_classification(source_csv_path="../../datasets/origins/research-abstracts/research_abstracts_cleaned.csv",
-                            real_label="real_abstract",
-                            generated_label="generated_abstract",
-                            target_dir_path="../../datasets/human-vs-machine",
-                            target_file_name="research-abstracts")
+reformat_supervised_learning(source_csv_path="../../datasets/origins/research-abstracts/research_abstracts_cleaned.csv",
+                             real_label="real_abstract",
+                             generated_label="generated_abstract",
+                             target_dir_path="../../datasets/human-vs-machine",
+                             target_file_name="research-abstracts")
 

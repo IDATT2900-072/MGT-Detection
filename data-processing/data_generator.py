@@ -3,10 +3,11 @@ import random
 import requests
 import csv
 import os
-import re
 import json
 from pathlib import Path
 import time
+
+from helpers import word_length_of, filter_and_count
 
 # Constants
 API_KEY = Path('../../api-keys/openai_key').read_text()
@@ -14,13 +15,9 @@ GPT_API_URL = "https://api.openai.com/v1/chat/completions"
 MODEL = "gpt-3.5-turbo-0301"
 
 
-def length_of(string):
-    return len(re.findall(r'\w+', string))
-
-
 def count_and_reformat(dataset, count_column, retain_columns):
     """
-    Counts text length in words for every data point in 'column_name'-column and creates a new list with the specified
+    Counts text length in words for every data-processing point in 'column_name'-column and creates a new list with the specified
     columns to be retained, in addition to a word count column as the last column. If one of the retained columns is
     named 'word_count', it must be renamed before execution, else it will be overwritten by this functions word_count.
 
@@ -44,11 +41,11 @@ def count_and_reformat(dataset, count_column, retain_columns):
     new_dataset = []
 
     # Format data_points and retrieve word_count
+    total = len(dataset)
     for i, data_point in enumerate(dataset):
-        total = len(dataset)
         if i % int(total / 100) == 0:
             print('\r', f'Counting words: {round(i / total * 100)}%', end="")
-        word_count = length_of(data_point[count_column])
+        word_count = word_length_of(data_point[count_column])
         if word_count < 50:
             continue
 
@@ -80,14 +77,10 @@ def filter_list(data, word_count_min, word_count_max, quantity):
     Returns
     -------
     list
-        A list with the length of 'quantity' containing the filtered elements from the original data-list. The elements
+        A list with the length of 'quantity' containing the filtered elements from the original data-processing-list. The elements
         are randomly selected from the filtered domain and a sorted in descending order based on their word_count value.
     """
-    if word_count_min > word_count_max:
-        raise Exception("word_count_min cannot be larger than word_count_max.")
-    # Filter and select
-    filtered_dataset = list(filter(lambda instance: word_count_min <= instance['word_count'] <= word_count_max, data))
-    filter_domain_size = len(filtered_dataset)
+    filtered_dataset, filter_domain_size = filter_and_count(data, word_count_min, word_count_max)
     print(f'\nFound {filter_domain_size} elements matching the filter.')
 
     if filter_domain_size < quantity:
@@ -120,9 +113,9 @@ def generate_abstracts(data, target_file_name, target_dir_path="./", start_index
     target_dir_path: str
         Path to the target directory for the reformatted dataset.
     start_index : int, optional
-        Index of the data-list from which the generation should start from (inclusive).
+        Index of the data-processing-list from which the generation should start from (inclusive).
     iterate_forward : bool, optional
-        Iteration-direction when generating samples from data-list.
+        Iteration-direction when generating samples from data-processing-list.
     debug : bool, optional
         If set to True, API-calls are skipped.
     """
@@ -146,17 +139,17 @@ def generate_abstracts(data, target_file_name, target_dir_path="./", start_index
         print("CSV-file already exists. Will append new rows to existing document. Cancel execution if this is not "
               "intended.\n")
 
-        # Reverse data-list if set
+        # Reverse data-processing-list if set
     if not iterate_forward:
         data.reverse()
 
     # Generation loop
     data_length = len(data)
     for i in range(start_index, data_length):
-        print('\r', f'Generating: {i + 1}/{data_length - start_index}', end="")
+        print('\r', f'Generating: {i + 1}/{data_length}', end="")
 
         # Set title, abstract and word count goal
-        title = data[i]['title']
+        title = data[i]['title'].replace('\n', '')
         real_abstract = data[i]['abstract']
         real_word_count = data[i]['word_count']
         user_prompt = user_base_prompt.format(title=title, word_count_goal=real_word_count)
@@ -174,7 +167,7 @@ def generate_abstracts(data, target_file_name, target_dir_path="./", start_index
             writer.writerow(
                 [title, real_abstract, real_word_count, generated_abstract, generated_word_count])
 
-    print("Abstract generation complete.")
+    print("\nAbstract generation complete.\n\n")
 
 
 def generate_GPT_abstract(system_prompt, user_prompt, attempts=0):
@@ -195,12 +188,13 @@ def generate_GPT_abstract(system_prompt, user_prompt, attempts=0):
     if response.status_code == 200:
         # Extract the generated text and its word count
         generated_abstract = response.json()["choices"][0]["message"]['content']
-        generated_word_count = length_of(generated_abstract)
+        generated_word_count = word_length_of(generated_abstract)
         return generated_abstract, generated_word_count
     else:
-        if attempts < 3:
+        if attempts < 5:
+            print("\n API-error. Reattempting API-call")
             time.sleep(5)
-            generate_GPT_abstract(system_prompt, user_prompt, attempts+1)
+            return generate_GPT_abstract(system_prompt, user_prompt, attempts + 1)
         else:
             raise RuntimeError(f"API-error: {response.status_code}, {response.text}")
 
@@ -217,8 +211,8 @@ def get_models():
     # Check if the request was successful
     if response.status_code == 200:
         # Extract the generated text
-        response_dict = response.json()["data"]
+        response_dict = response.json()["data-processing"]
         for model_specs in response_dict:
-            print(model_specs)
+            print(model_specs, "\n")
     else:
         print("Error:", response.status_code, response.text)
