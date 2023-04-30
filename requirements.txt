@@ -9,3 +9,4 @@ psutil==5.9.4
 wandb~=0.14.2
 scikit-learn
 requests~=2.28.2
+matplotlib~=3.7.1

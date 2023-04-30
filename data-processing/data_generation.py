@@ -1,3 +1,4 @@
+import numpy as np
 import random
 
 import requests
@@ -7,94 +8,12 @@ import json
 from pathlib import Path
 import time
 
-from helpers import word_length_of, filter_and_count
+from data_processing import word_length_of, filter_and_count, completion_bar
 
 # Constants
 API_KEY = Path('../../api-keys/openai_key').read_text()
 GPT_API_URL = "https://api.openai.com/v1/chat/completions"
 MODEL = "gpt-3.5-turbo-0301"
-
-
-def count_and_reformat(dataset, count_column, retain_columns):
-    """
-    Counts text length in words for every data-processing point in 'column_name'-column and creates a new list with the specified
-    columns to be retained, in addition to a word count column as the last column. If one of the retained columns is
-    named 'word_count', it must be renamed before execution, else it will be overwritten by this functions word_count.
-
-    Parameters
-    ----------
-    dataset : dict
-        Dataset to extract texts from
-    count_column : str
-        Column name containing the texts which are to be extracted.
-    retain_columns : list[str]
-        A list containing the names of the columns which are to be retained in the returned list. All other columns
-        will be omitted.
-
-    Returns
-    -------
-    list
-        A list of dictionaries containing the columns specified in the 'retain_columns'-parameter, in addition to a
-        word_count-column at the end.
-    """
-
-    new_dataset = []
-
-    # Format data_points and retrieve word_count
-    total = len(dataset)
-    for i, data_point in enumerate(dataset):
-        if i % int(total / 100) == 0:
-            print('\r', f'Counting words: {round(i / total * 100)}%', end="")
-        word_count = word_length_of(data_point[count_column])
-        if word_count < 50:
-            continue
-
-        new_data_point = {}
-        for column in retain_columns:
-            new_data_point[column] = data_point[column]
-        new_data_point['word_count'] = word_count
-        new_dataset.append(new_data_point)
-
-    return new_dataset
-
-
-def filter_list(data, word_count_min, word_count_max, quantity):
-    """
-    Filters the list, removing entries with a word_count outside the specified range, and randomly selects the desired
-    quantity.
-
-    Parameters
-    ----------
-    data : list[dict]
-        A list of dictionaries holding at minimum a 'word_count' field.
-    word_count_min : int
-        Minimum accepted word count, inclusive
-    word_count_max : int
-        Maximum accepted word count, inclusive
-    quantity : int
-        The amount of selected elements the filtered list should contain.
-
-    Returns
-    -------
-    list
-        A list with the length of 'quantity' containing the filtered elements from the original data-processing-list. The elements
-        are randomly selected from the filtered domain and a sorted in descending order based on their word_count value.
-    """
-    filtered_dataset, filter_domain_size = filter_and_count(data, word_count_min, word_count_max)
-    print(f'\nFound {filter_domain_size} elements matching the filter.')
-
-    if filter_domain_size < quantity:
-        print(f"Number of filtered elements ({filter_domain_size}), is less than desired quantity ({quantity}).")
-        quantity = filter_domain_size
-
-    # Select random elements
-    random.seed(42)
-    filtered_dataset = random.sample(filtered_dataset, k=quantity)
-    print(f'Returned list is of length {len(filtered_dataset)}.')
-
-    # Sort in descending manner
-    filtered_dataset.sort(key=lambda instance: instance['word_count'], reverse=True)
-    return filtered_dataset
 
 
 def generate_abstracts(data, target_file_name, target_dir_path="./", start_index=0, iterate_forward=True, debug=False):
