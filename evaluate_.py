@@ -5,7 +5,7 @@ ds = datasets.load_dataset("NicolaiSivesind/human-vs-machine", "wiki_labeled")
 
 print("Initiating...")
 model_name = "roberta-base-openai-detector"
-tuner = FineTuner(model_name, ds, max_tokenized_length=512, wandb_logging=False)
+tuner = FineTuner(model_name, ds, max_tokenized_length=512, do_wandb_logging=False)
 
 print("Testing...")
 results = tuner.test(ds)
