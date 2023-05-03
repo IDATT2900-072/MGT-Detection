@@ -19,7 +19,6 @@ class FineTuner:
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name,
                                                                         num_labels=2,
-                                                                        low_cpu_mem_usage=True,
                                                                         label2id=self.label2id,
                                                                         id2label=self.id2label)
         self.max_tokenized_length = max_tokenized_length
