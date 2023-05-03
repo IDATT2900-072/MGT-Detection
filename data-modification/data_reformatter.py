@@ -3,8 +3,11 @@ import csv
 import os
 import re
 
+from data_processing import word_length_of, completion_bar
 
-def reformat_supervised_learning(source_csv_path, real_label, generated_label, target_dir_path, target_file_name):
+
+def reformat_supervised_learning(source_csv_path, real_label, generated_label, title, target_dir_path,
+                                 target_file_name):
     """
     Reformats an origin dataset into a two-column dataset consisting of a text and its corresponding binary class
     label, omitting redundant features of the origin dataset.
@@ -23,12 +26,12 @@ def reformat_supervised_learning(source_csv_path, real_label, generated_label, t
         Name of the reformatted dataset.
     """
     data = pd.read_csv(source_csv_path, engine="python")
-    fields = ['label', 'text']
+    fields = ['title', 'label', 'text']
     formatted_data = []
 
     for i in range(len(data)):
-        formatted_data.append([0, data[real_label][i]])
-        formatted_data.append([1, data[generated_label][i]])
+        formatted_data.append([data[title][i], 0, data[real_label][i]])
+        formatted_data.append([data[title][i], 1, data[generated_label][i]])
 
     os.makedirs(target_dir_path, exist_ok=True)
     with open(target_dir_path + "/" + target_file_name + ".csv", 'w') as f:
@@ -107,23 +110,72 @@ def clean_text_column(dirty_columns, cleaning_func, source_csv_path, target_dir_
     print(f"Column(s) cleaned.")
 
 
+def deduplicate_csv(source_csv_path, target_file_name, target_dir_path="./"):
+    data = pd.read_csv(source_csv_path, engine="python")
+    deduplicated = data.drop_duplicates(subset=['title'])
+    deduplicated.to_csv(target_dir_path + "/" + target_file_name + ".csv", index=False)
+
+
+def recount_words_csv(column_pairs: [(str, str)], source_csv_path, target_dir_path, target_file_name, delim=','):
+    data = pd.read_csv(source_csv_path, engine="python", delimiter=delim)
+    fields = list(data.columns)
+    new_data = []
+
+    for i, row in data.iterrows():
+        completion_bar(i, data.size, f'Recounting rows')
+        new_data.append([row[field] for field in fields])
+
+        if i == 0:
+            continue
+
+        for (text_column, count_column) in column_pairs:
+            text_index, count_index = 0, 0
+
+            for j, field in enumerate(fields):
+                if field == count_column:
+                    count_index = j
+                elif field == text_column:
+                    text_index = j
+
+            new_data[i][count_index] = word_length_of(row[text_index])
+
+    os.makedirs(target_dir_path, exist_ok=True)
+    with open(target_dir_path + "/" + target_file_name + ".csv", 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(fields)
+        writer.writerows(new_data)
+
+    print(f"\nColumn(s) recounted.")
+
+
 # Execution queue
 # reformat_supervised_learning(source_csv_path="../../datasets/origins/GPT-wiki-intro.csv",
-#                             real_label="wiki_intro",
-#                             generated_label="generated_intro",
-#                             target_dir_path="../../datasets/human-vs-machine",
-#                             target_file_name="wiki-labeled")
+#                              real_label="wiki_intro",
+#                              generated_label="generated_intro",
+#                              title='title',
+#                              target_dir_path="../../datasets/human-vs-machine",
+#                              target_file_name="wiki-labeled")
 
+#
+# deduplicate_csv(source_csv_path='../../datasets/origins/research-abstracts/research_abstracts_final.csv',
+#                 target_dir_path='../../datasets/origins/research-abstracts/',
+#                 target_file_name='research_abstracts-deduplicated')
 
-# clean_text_column(dirty_columns=["real_abstract", 'generated_abstract'],
+# clean_text_column(dirty_columns=["real_abstract", 'generated_abstract', 'title'],
 #                   cleaning_func=cleanup_newlines,
-#                   source_csv_path="../../datasets/origins/research-abstracts/research_abstracts.csv",
+#                   source_csv_path="../../datasets/origins/research-abstracts/research_abstracts-uniform.csv",
 #                   target_dir_path="../../datasets/origins/research-abstracts",
 #                   target_file_name="research_abstracts_cleaned")
 
-reformat_supervised_learning(source_csv_path="../../datasets/origins/research-abstracts/research_abstracts_cleaned.csv",
+# recount_words_csv(column_pairs=[('real_abstract', 'real_word_count'), ('generated_abstract', 'generated_word_count')],
+#                   source_csv_path='../../datasets/origins/research-abstracts/research_abstracts_reviewed.csv',
+#                   target_dir_path="../../datasets/origins/research-abstracts",
+#                   target_file_name="research_abstracts_recounted-test",
+#                   delim=';')
+
+reformat_supervised_learning(source_csv_path="../../datasets/origins/research-abstracts/research_abstracts-final.csv",
                              real_label="real_abstract",
                              generated_label="generated_abstract",
+                             title='title',
                              target_dir_path="../../datasets/human-vs-machine",
-                             target_file_name="research-abstracts")
-
+                             target_file_name="research-abstracts-labeled")

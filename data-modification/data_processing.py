@@ -1,11 +1,11 @@
 import re
 import random
 import numpy as np
-from datasets import Dataset
+from datasets import Dataset, concatenate_datasets
 
 
 def completion_bar(counter, total, text='Progress'):
-    if counter % round(total / 100) == 0:
+    if counter % max(round(total / 100), 1) == 0:
         print('\r', f'{text}: {round(counter / total * 100)}%', end="")
 
 
@@ -42,7 +42,7 @@ def filter_list(data, word_count_min, word_count_max, quantity):
     Returns
     -------
     list
-        A list with the length of 'quantity' containing the filtered elements from the original data-processing-list. The elements
+        A list with the length of 'quantity' containing the filtered elements from the original data-modification-list. The elements
         are randomly selected from the filtered domain and a sorted in descending order based on their word_count value.
     """
     filtered_dataset, filter_domain_size = filter_and_count(data, 'word_count', word_count_min, word_count_max)
@@ -64,7 +64,7 @@ def filter_list(data, word_count_min, word_count_max, quantity):
 
 def count_and_reformat(dataset, count_column, retain_columns):
     """
-    Counts text length in words for every data-processing point in 'column_name'-column and creates a new list with the specified
+    Counts text length in words for every data-modification point in 'column_name'-column and creates a new list with the specified
     columns to be retained, in addition to a word count column as the last column. If one of the retained columns is
     named 'word_count', it must be renamed before execution, else it will be overwritten by this functions word_count.
 
@@ -151,7 +151,6 @@ def sample_uniform_subset(dataset, column, subset_size, start, end):
 
     # Sample until subset size is reached or all data points have been sampled.
     while len(subset) < subset_size and len(word_count_lists) > 0:
-        to_delete = []
         empty = []
         keys = list(word_count_lists.keys())
 
@@ -166,10 +165,58 @@ def sample_uniform_subset(dataset, column, subset_size, start, end):
                 empty.append(key)
                 continue
             subset.append(word_count_lists[key].pop(0))
-            to_delete.append(key)
 
         # Delete integer value lists where all data points are sampled.
         for key in empty:
             del word_count_lists[key]
 
     return subset
+
+
+def substitute_duplicates_uniform(dataset: Dataset, source_dataset, duplicate_column :str, source_distribution_column, size_goal, start, end, seed):
+    uniques = dataset.unique(duplicate_column)
+    substitutes = []
+    substitutions = size_goal - len(uniques)
+
+    random.seed(seed)
+    random.shuffle(source_dataset)
+    source_dataset = list(source_dataset)
+
+    # Sort data points into separate list for each integer value
+    word_count_lists = {i: [] for i in range(start, end + 1)}
+
+    for i, data_point in enumerate(source_dataset):
+        completion_bar(i, len(source_dataset), text='Sorting into lists')
+
+        word_count = data_point[source_distribution_column]
+        if start <= word_count <= end:
+            word_count_lists[word_count].append(data_point)
+
+    print('')
+
+    # Sample until subset size is reached or all data points have been sampled.
+    while len(substitutes) < substitutions and len(word_count_lists) > 0:
+        empty = []
+        keys = list(word_count_lists.keys())
+
+        # Randomise order for each selection round for true uniform sampling.
+        random.shuffle(keys)
+        for key in keys:
+            completion_bar(len(substitutes), substitutions, text='Sampling substitutes')
+            if len(substitutes) >= substitutions:
+                return substitutes
+
+            if len(word_count_lists[key]) == 0:
+                empty.append(key)
+                continue
+
+            selected = word_count_lists[key].pop(0)
+            if selected[duplicate_column].replace('\n', '') not in uniques:
+                substitutes.append(selected)
+
+        # Delete integer value lists where all data points are sampled.
+        for key in empty:
+            del word_count_lists[key]
+
+    return substitutions
+

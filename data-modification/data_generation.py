@@ -32,9 +32,9 @@ def generate_abstracts(data, target_file_name, target_dir_path="./", start_index
     target_dir_path: str
         Path to the target directory for the reformatted dataset.
     start_index : int, optional
-        Index of the data-processing-list from which the generation should start from (inclusive).
+        Index of the data-list from which the generation should start from (inclusive).
     iterate_forward : bool, optional
-        Iteration-direction when generating samples from data-processing-list.
+        Iteration-direction when generating samples from data-list.
     debug : bool, optional
         If set to True, API-calls are skipped.
     """
@@ -58,7 +58,7 @@ def generate_abstracts(data, target_file_name, target_dir_path="./", start_index
         print("CSV-file already exists. Will append new rows to existing document. Cancel execution if this is not "
               "intended.\n")
 
-        # Reverse data-processing-list if set
+        # Reverse data-list if set
     if not iterate_forward:
         data.reverse()
 
@@ -130,7 +130,7 @@ def get_models():
     # Check if the request was successful
     if response.status_code == 200:
         # Extract the generated text
-        response_dict = response.json()["data-processing"]
+        response_dict = response.json()["data"]
         for model_specs in response_dict:
             print(model_specs, "\n")
     else:
