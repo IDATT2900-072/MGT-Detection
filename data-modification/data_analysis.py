@@ -37,7 +37,7 @@ def display_word_count_intervals(dataset, intervals, column_name):
         plt.show()
 
 
-def plot_distribution(plots: list[dict], start, end, sigma=2, save_to=None, title=None):
+def plot_distribution(plots: list[dict], start, end, sigma=2, save_to=None, title=None, ylim=None):
     # Set the plot style
     with plt.style.context('ggplot'):
         # Create the figure and axis objects
@@ -61,19 +61,23 @@ def plot_distribution(plots: list[dict], start, end, sigma=2, save_to=None, titl
 
             # Plot the smoothed data with a label for the legend
             x_values = np.arange(start, end + 1)
-            ax.plot(x_values, smoothed_counts, label=plot['display'], color=plot['color'])
+            ax.plot(x_values, smoothed_counts, label=plot['display'], alpha=plot['alpha'], color=plot['color'])
 
         # Set labels and title
         ax.set_xlabel('Length of text in words')
         ax.set_ylabel('Number of texts')
         if title:
-            ax.set_title('Word count distributions')
+            ax.set_title(title)
 
         # Rotate x-axis labels for better readability
         plt.xticks(rotation=90)
 
         # Add a legend
         ax.legend(facecolor='white')
+
+        # Set custom y-axis limits if provided
+        if ylim:
+            ax.set_ylim(ylim)
 
     # Display the plot
     plt.subplots_adjust(left=0.07, bottom=0.143, right=0.93, top=0.943)
