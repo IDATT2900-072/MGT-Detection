@@ -6,7 +6,7 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
-model_name = "roberta-base-openai-detector"
+model_name = "andreas122001/bloomz-560m-wiki-detector"
 dataset_name = "wiki_labeled"
 
 # Load dataset
