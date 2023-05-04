@@ -28,7 +28,8 @@ ds['validation'] = ds['validation'].select(range(int(len(ds['validation'])*ds_ml
 
 print("="*150)
 print("Initiating trainer...")
-tuner = FineTuner(model_name, ds, num_epochs=1, logging_steps=int(max(1, (ds_mlt*len(ds['train'])/(50*8)))), max_tokenized_length=512, do_wandb_logging=True)
+logging_steps = int(max(1, len(ds['train'])/(50*8))) # assuming a batch_size of 8, will make sure every epoch has 50 evaluations
+tuner = FineTuner(model_name, ds, num_epochs=1, logging_steps=logging_steps, max_tokenized_length=512, do_wandb_logging=True)
 print("="*150)
 print("Starting training...")
 tuner.train()

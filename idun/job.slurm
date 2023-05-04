@@ -7,8 +7,8 @@
 #SBATCH --mem=50G
 #SBATCH --gres=gpu:A100m80:1
 #SBATCH --constraint=A100
-#SBATCH --job-name="560m-wiki-1000"
-#SBATCH --output="res-%x.out"
+#SBATCH --job-name="560m-wiki-100"
+#SBATCH --output="./logs/res-%x.out"
 #SBATCH --mail-type=end
 #SBATCH --mail-user=andrebw@stud.ntnu.no
 
@@ -37,4 +37,4 @@ python ../main.py $SLURM_JOB_NAME
 
 echo ""
 echo "------------------------------"
-echo "Job finished!"
+echo "Job $SLURM_JOB_ID finished!"
