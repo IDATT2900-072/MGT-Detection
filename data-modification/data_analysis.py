@@ -37,7 +37,7 @@ def display_word_count_intervals(dataset, intervals, column_name):
         plt.show()
 
 
-def plot_distribution(plots: list[dict], start, end, sigma=2, save_to=None, title=None, ylim=None):
+def plot_distribution(plots: list[dict], start, end, sigma=2, x_label=None, y_label=None, save_to=None, title=None, y_lim=None, h_lines=None, v_lines=None, legend_offset=1.0):
     # Set the plot style
     with plt.style.context('ggplot'):
         # Create the figure and axis objects
@@ -45,6 +45,22 @@ def plot_distribution(plots: list[dict], start, end, sigma=2, save_to=None, titl
 
         ax.patch.set_facecolor('lightgrey')
         ax.patch.set_alpha(0.3)
+
+        # Set custom y-axis limits if provided
+        if y_lim:
+            ax.set_ylim(y_lim)
+
+        # Set horizontal lines if provided
+        if h_lines:
+            for h_line in h_lines:
+                ax.axhline(h_line['value'], color=h_line['color'], linestyle='--', alpha=h_line['alpha'])
+                ax.text(h_line['offset'][0], h_line['value'] + h_line['offset'][1], h_line['text'], color=h_line['color'])
+
+        # Set vertical lines if provided
+        if v_lines:
+            for v_line in v_lines:
+                ax.axvline(v_line['value'], color=v_line['color'], linestyle='--', alpha=0.8)
+                ax.text(v_line['value'] + v_line['offset'][0], v_line['offset'][1], v_line['text'], color=v_line['color'])
 
         for i, plot in enumerate(plots):
             counts = np.zeros(end - start + 1)
@@ -63,21 +79,31 @@ def plot_distribution(plots: list[dict], start, end, sigma=2, save_to=None, titl
             x_values = np.arange(start, end + 1)
             ax.plot(x_values, smoothed_counts, label=plot['display'], alpha=plot['alpha'], color=plot['color'])
 
-        # Set labels and title
-        ax.set_xlabel('Length of text in words')
-        ax.set_ylabel('Number of texts')
+            if plot['mode']:
+                # Find the maximum y-value and its index in the smoothed_counts array
+                max_y_index = np.argmax(smoothed_counts)
+                max_y_value = smoothed_counts[max_y_index]
+                max_x_value = x_values[max_y_index]
+
+                # Draw a dashed line from the maximum y-value to the x-axis
+                ax.axvline(max_x_value, ymin=0, ymax=max_y_value / ax.get_ylim()[1], color=plot['color'], linestyle='--', alpha=plot['alpha'])
+
+                # Display the x-value at the base of the dashed line
+                ax.text(max_x_value + 2 + 3 * len(str(max_x_value)), 0, f"{max_x_value}", color=plot['color'], ha='center', va='bottom')
+
+        # Set labels and title if provided
+        if x_label:
+            ax.set_xlabel(x_label)
+        if y_label:
+            ax.set_ylabel(y_label)
         if title:
             ax.set_title(title)
 
         # Rotate x-axis labels for better readability
         plt.xticks(rotation=90)
 
-        # Add a legend
-        ax.legend(facecolor='white')
-
-        # Set custom y-axis limits if provided
-        if ylim:
-            ax.set_ylim(ylim)
+        # Add a legend with an offset
+        ax.legend(facecolor='white', bbox_to_anchor=(legend_offset, 1))
 
     # Display the plot
     plt.subplots_adjust(left=0.07, bottom=0.143, right=0.93, top=0.943)
@@ -87,7 +113,9 @@ def plot_distribution(plots: list[dict], start, end, sigma=2, save_to=None, titl
     plt.show()
 
 
-def plot_histogram(plots: list[dict], start, end, sigma=2, save_to=None, bins=None):
+def plot_histogram(plots: list[dict], start, end, sigma=2, save_to=None):
+    bins = end-start+1
+
     # Set the plot style
     with plt.style.context('ggplot'):
         # Create the figure and axis objects
@@ -105,14 +133,7 @@ def plot_histogram(plots: list[dict], start, end, sigma=2, save_to=None, bins=No
                 if start <= count <= end:
                     counts.append(count)
 
-            # Apply the Gaussian filter if necessary
-            if sigma:
-                hist_data, bin_edges = np.histogram(counts, bins=bins, range=(start, end))
-                smoothed_counts = gaussian_filter1d(hist_data, sigma)
-                x_values = (bin_edges[:-1] + bin_edges[1:]) / 2
-                ax.plot(x_values, smoothed_counts, label=plot['display'], color=plot['color'])
-            else:
-                ax.hist(counts, bins=bins, range=(start, end), alpha=0.5, label=plot['display'], color=plot['color'])
+            ax.hist(counts, bins=bins, range=(start, end), alpha=plot['alpha'], label=plot['display'], color=plot['color'])
 
         # Set labels and title
         ax.set_xlabel('Length of text in words')
@@ -131,4 +152,3 @@ def plot_histogram(plots: list[dict], start, end, sigma=2, save_to=None, bins=No
     if save_to:
         plt.savefig(save_to)
     plt.show()
-
