@@ -1,16 +1,16 @@
 #!/bin/sh
 #SBATCH --partition=GPUQ
 #SBATCH --account=share-ie-idi
-#SBATCH --time=02:00:00
+#SBATCH --time=10:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem=16G
-#SBATCH --gres=gpu:1
+#SBATCH --mem=50G
+#SBATCH --gres=gpu:A100m80:1
 #SBATCH --constraint=A100
-#SBATCH --job-name="full-560m-A"
+#SBATCH --job-name="560m-wiki-1000"
 #SBATCH --output="res-%x.out"
+#SBATCH --mail-type=end
 #SBATCH --mail-user=andrebw@stud.ntnu.no
-#SBATCH --mail-type=ALL
 
 WORKDIR=${SLURM_SUBMIT_DIR}
 cd ${WORKDIR}
@@ -33,7 +33,7 @@ module purge
 module load fosscuda/2020b
 module load Anaconda3/2020.07
 
-python ../main.py
+python ../main.py $SLURM_JOB_NAME
 
 echo ""
 echo "------------------------------"
