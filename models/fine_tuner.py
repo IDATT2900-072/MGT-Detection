@@ -10,7 +10,7 @@ import os
 class FineTuner:
     """Fine-tunes a pre-trained model on a specific dataset"""
 
-    def __init__(self, model_name, dataset, num_epochs=5, max_tokenized_length=None, logging_steps=500, wandb_logging=True):
+    def __init__(self, model_name, dataset, num_epochs=5, max_tokenized_length=None, logging_steps=500, do_wandb_logging=True):
         self.test_dataset = None
         self.dataset = dataset
         self.labels = dataset['train'].features['label'].names
@@ -19,7 +19,7 @@ class FineTuner:
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name,
                                                                         num_labels=2,
-                                                                        low_cpu_mem_usage=True,
+									                                    low_cpu_mem_usage=True,
                                                                         label2id=self.label2id,
                                                                         id2label=self.id2label)
         self.max_tokenized_length = max_tokenized_length
@@ -31,7 +31,7 @@ class FineTuner:
         self.trainer = self.init_trainer()
 
         # Initialize Weights and Biases
-        if wandb_logging:
+        if do_wandb_logging:
             wandb.init(project="IDATT2900-072",
                     config={
                         'base_model': model_name,
@@ -57,17 +57,16 @@ class FineTuner:
         validation_dataset = tokenized_datasets["validation"].shuffle(seed=self.seed)
         self.test_dataset = tokenized_datasets["test"].shuffle(seed=self.seed)
 
-        # E.g "bloomz-560m-wiki_labeled-27000"
-        save_name = self.model.config._name_or_path + "-" + self.dataset['train'].config_name + "-" + str(
-            len(self.dataset['train']))
+        # E.g "bloomz-560m-wiki_labeled-27000-detector"
+        save_name = self.model.config._name_or_path.split("/")[-1] + "-" + self.dataset['train'].config_name + "-" + str(
+            len(self.dataset['train'])) + "-detector"
 
         training_args = TrainingArguments(output_dir="./outputs/" + save_name,
                                           logging_dir="./logs",
                                           logging_steps=self.logging_steps,
                                           logging_first_step=True,
                                           evaluation_strategy="steps",
-                                          save_strategy='steps',
-                                          save_steps=int(2 * self.logging_steps),
+                                          save_strategy='epoch',
                                           optim='adamw_torch',
                                           num_train_epochs=self.num_epochs,
                                           auto_find_batch_size=True,
