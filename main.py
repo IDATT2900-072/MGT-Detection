@@ -11,7 +11,10 @@ if len(sys.argv) == 2:
     print("Using arguments from sbatch")
     args = sys.argv[1].split("-")
     if len(args) >= 3:
-        model_name = "bigscience/bloomz-" + args[0]
+        if args[0] == "rob":
+            model_name = "roberta-large-openai-detector"
+        else:
+            model_name = "bigscience/bloomz-" + args[0]
         dataset_name = "research_abstracts_labeled" if args[1] == "abs" else "wiki_labeled"
         ds_mlt = 1/float(args[2])
         print("Using arguments: ", model_name, dataset_name, ds_mlt)
