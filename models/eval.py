@@ -59,5 +59,5 @@ for i, batch in enumerate(tqdm(dataloader)):
 # Print result - sleep so tqdm doesn't overwrite results
 sleep(1)
 print("\nResults: (t/f)")
-print(str(trues))
-print(str(falses))
+print("trues = " + str(trues))
+print("falses = " + str(falses))
