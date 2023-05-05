@@ -1,6 +1,7 @@
 from models.fine_tuner import FineTuner
 import datasets
 import sys
+import re
 
 dataset_name = "wiki_labeled"
 ds_mlt = 0.1 # how much if the dataset to use - default 10%
@@ -25,6 +26,15 @@ ds = datasets.load_dataset("NicolaiSivesind/human-vs-machine", dataset_name)
 ds['train'] = ds['train'].select(range(int(len(ds['train'])*ds_mlt)))
 ds['test'] = ds['test'].select(range(int(len(ds['test'])*ds_mlt)))
 ds['validation'] = ds['validation'].select(range(int(len(ds['validation'])*ds_mlt)))
+
+# This dataset must be pre-processed - removing newlines and white-spaces
+if dataset_name == "research_abstracts_labeled":
+    def remove_newline(dataset):
+        dataset['text'] = re.sub(r'\s+', ' ', dataset['text'])        
+        return dataset
+
+    for split_name, split in zip(ds.keys(), ds.values()):
+        ds[split_name] = split.map(remove_newline)
 
 print("="*150)
 print("Initiating trainer...")
