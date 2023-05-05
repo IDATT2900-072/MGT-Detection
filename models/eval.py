@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
-
 model_name = "andreas122001/bloomz-560m-wiki-detector"
 dataset_name = "wiki_labeled"
 
@@ -13,27 +12,28 @@ dataset_name = "wiki_labeled"
 dataset = datasets.load_dataset("NicolaiSivesind/human-vs-machine", dataset_name, split="test")
 
 # Load model and tokenizer into pipeline
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSequenceClassification.from_pretrained(model_name,
-                                                                num_labels=2)
+device = "cuda" if torch.cuda.is_available() else "cpu"
+tokenizer = AutoTokenizer.from_pretrained(model_name, device=device)
+model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
+model.to(device)
 
 # Define predict function
 def predict(batch):
-    encoding = tokenizer(batch['text'], return_tensors="pt", padding="max_length", truncation=True)
+    encoding = tokenizer(batch, return_tensors="pt", padding="max_length", truncation=True, max_length=512)
     encoding = {k: v.to(model.device) for k, v in encoding.items()}
 
-    outputs = model(encoding['input_ids'])
+    outputs = model(**encoding)
     logits = outputs.logits.squeeze()
-    pred = torch.softmax(logits.cpu(), dim=-1)
+    pred = torch.softmax(logits.cpu(), dim=-1).detach().numpy()
 
-    return np.argmax(pred)
+    return np.argmax(pred, -1)
 
 # Perform tests
 trues = [0, 0] # negative, positive
 falses = [0, 0] # negative, positive
 
-dataloader = DataLoader(dataset, batch_size=32)
-for batch in tqdm(dataloader):
+dataloader = DataLoader(dataset, batch_size=8)
+for i, batch in enumerate(tqdm(dataloader)):
 
     predicted_labels = predict(batch['text'])
     real_labels = batch['label']
@@ -44,11 +44,13 @@ for batch in tqdm(dataloader):
             trues[pred] += 1
         else:
             falses[pred] += 1
-    
+
+    if i%100 == 0:
+        print("\n" +str(trues),str(falses))
+        
 # For debugging
 print("trues (n/p):" + str(trues))
 print("falses (n/p):" + str(falses))
-
 
 # Gather results in array and normalize
 results = np.array([
@@ -56,7 +58,6 @@ results = np.array([
     [falses[0], trues[1]]
     ])
 results = np.round((results / np.sum(results))*100, 2)
-
 
 # Plot as heatmap
 labels_x = ["0", "1"]
@@ -83,4 +84,4 @@ for i in range(len(labels_x)):
         text = ax.text(j, i, (str(results[i, j]) + "%"),
                        ha="center", va="center", color=color)
 fig.tight_layout()
-plt.show()
+plt.savefig(model_name + "_result.png", bbox_inches='tight')

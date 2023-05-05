@@ -25,13 +25,14 @@ class FineTuner:
         self.max_tokenized_length = max_tokenized_length
         self.num_epochs = num_epochs
         self.logging_steps = logging_steps
+        self.do_wandb_logging = do_wandb_logging
         self.seed = 42
 
         # Initialize trainer
         self.trainer = self.init_trainer()
 
         # Initialize Weights and Biases
-        if do_wandb_logging:
+        if self.do_wandb_logging:
             wandb.init(project="IDATT2900-072",
                     config={
                         'base_model': model_name,
@@ -112,7 +113,7 @@ class FineTuner:
         metrics = self.trainer.evaluate(eval_dataset=test_dataset, metric_key_prefix=prefix)
 
         # If using default, we still want to log as test/"dataset"_"metric"
-        if not dataset:
+        if not dataset and self.do_wandb_logging:
             prefix = "test/" + test_dataset.config_name.replace("_", "-")
             res = {prefix + str(key).replace("test", ""): val for key, val in metrics.items()}
             wandb.log(res)
@@ -120,7 +121,7 @@ class FineTuner:
     
     def classify(self, text):
         # Initialize pipeline
-        classifier = pipeline("text-classification", model=self.model, tokenizer=self.tokenizer)
+        classifier = pipeline("text-classification", model=self.model, tokenizer=self.tokenizer, device=0)
         return classifier(text)
 
     def predict(self, data: Union[str, List[str]]) -> torch.Tensor:
@@ -141,8 +142,8 @@ class FineTuner:
             logits = outputs.logits.squeeze()
 
         # Calculate probabilities
-        probabilities = torch.softmax(logits.cpu(), dim=-1)
-        return probabilities
+        probabilities = torch.softmax(logits.cpu(), dim=-1).detach().numpy()
+        return probabilities.tolist()
     
     def get_labels(self):
         return self.labels
