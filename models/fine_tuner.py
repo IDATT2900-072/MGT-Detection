@@ -58,9 +58,8 @@ class FineTuner:
         validation_dataset = tokenized_datasets["validation"].shuffle(seed=self.seed)
         self.test_dataset = tokenized_datasets["test"].shuffle(seed=self.seed)
 
-        # E.g "bloomz-560m-wiki_labeled-27000-detector"
-        save_name = self.model.config._name_or_path.split("/")[-1] + "-" + self.dataset['train'].config_name + "-" + str(
-            len(self.dataset['train'])) + "-detector"
+        # E.g "bloomz-560m-wiki_labeled-detector"
+        save_name = self.model.config._name_or_path.split("/")[-1] + "-" + self.dataset['train'].config_name + "-detector"
 
         training_args = TrainingArguments(output_dir="./outputs/" + save_name,
                                           logging_dir="./logs",
