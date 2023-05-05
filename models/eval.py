@@ -5,11 +5,18 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
+from time import sleep
+
 model_name = "andreas122001/bloomz-560m-wiki-detector"
 dataset_name = "wiki_labeled"
+num_data = None
+
+print(f"\nModel: {model_name}\nDataset: {dataset_name}\n")
 
 # Load dataset
 dataset = datasets.load_dataset("NicolaiSivesind/human-vs-machine", dataset_name, split="test")
+if num_data:
+    dataset = dataset.select(range(num_data))
 
 # Load model and tokenizer into pipeline
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -29,14 +36,15 @@ def predict(batch):
     return np.argmax(pred, -1)
 
 # Perform tests
-trues = [0, 0] # negative, positive
-falses = [0, 0] # negative, positive
+trues = [0, 0] # [negatives, positives] - all true negative and positive predicions
+falses = [0, 0] # [negatives, positives] - all false negative and positive predicions
 
-dataloader = DataLoader(dataset, batch_size=8)
+num_prints = 50 # how many times to print intermediate results
+dataloader = DataLoader(dataset, batch_size=3)
 for i, batch in enumerate(tqdm(dataloader)):
 
-    predicted_labels = predict(batch['text'])
-    real_labels = batch['label']
+    predicted_labels = np.array([predict(batch['text'])]).reshape(-1)
+    real_labels = batch['label'].detach().numpy()
 
     # Assert reals and falses for positive and negative results
     for real, pred in zip(real_labels, predicted_labels):
@@ -45,43 +53,11 @@ for i, batch in enumerate(tqdm(dataloader)):
         else:
             falses[pred] += 1
 
-    if i%100 == 0:
+    if i%max(1, len(dataloader) // num_prints) == 0:
         print("\n" +str(trues),str(falses))
-        
-# For debugging
-print("trues (n/p):" + str(trues))
-print("falses (n/p):" + str(falses))
 
-# Gather results in array and normalize
-results = np.array([
-    [trues[0], falses[1]],
-    [falses[0], trues[1]]
-    ])
-results = np.round((results / np.sum(results))*100, 2)
-
-# Plot as heatmap
-labels_x = ["0", "1"]
-labels_y = ["0", "1"]
-
-fig, ax = plt.subplots()
-im = ax.imshow(results, cmap="Blues")
-
-ax.set_title("Bloomz-560m on wiki_labeled")
-ax.set_xlabel("Predicted label")
-ax.set_ylabel("True label")
-ax.set_xticks(np.arange(len(labels_y)), labels=labels_y)
-ax.set_yticks(np.arange(len(labels_x)), labels=labels_x)
-
-cbar = ax.figure.colorbar(im, ax=ax)
-cbar.ax.set_ylabel("Percentage", rotation=-90, va="bottom")
-
-for i in range(len(labels_x)):
-    for j in range(len(labels_y)):
-        if results[i, j] < 20:
-            color = "black"
-        else:
-            color = "w"
-        text = ax.text(j, i, (str(results[i, j]) + "%"),
-                       ha="center", va="center", color=color)
-fig.tight_layout()
-plt.savefig(model_name + "_result.png", bbox_inches='tight')
+# Print result - sleep so tqdm doesn't overwrite results
+sleep(1)
+print("\nResults: (t/f)")
+print(str(trues))
+print(str(falses))

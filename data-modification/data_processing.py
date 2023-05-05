@@ -1,7 +1,7 @@
 import re
 import random
 import numpy as np
-from datasets import Dataset, concatenate_datasets
+from datasets import Dataset, concatenate_datasets, DatasetDict
 
 
 def completion_bar(counter, total, text='Progress'):
@@ -12,6 +12,16 @@ def completion_bar(counter, total, text='Progress'):
 def word_length_of(string):
     return len(re.findall(r'\w+', string))
 
+def remove_white_spaces(dataset: DatasetDict):
+    """
+    Removes all white-spaces from the 'text'-column of all splits in a dataset-dictionary
+    """
+    def remove_newline(dataset):
+        dataset['text'] = re.sub(r'\s+', ' ', dataset['text'])        
+        return dataset
+
+    for split_name, split in zip(dataset.keys(), dataset.values()):
+        dataset[split_name] = split.map(remove_newline)
 
 def filter_and_count(dataset, word_count_column, min_word_count, max_word_count):
     if min_word_count > max_word_count:
