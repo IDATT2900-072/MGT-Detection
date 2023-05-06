@@ -7,3 +7,4 @@ test_trainer
 test*.ipynb
 **/outputs
 test/**
+**/val_logs/*

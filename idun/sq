@@ -1,1 +1,1 @@
-squeue -u $USER --format="%.18i %.9P %.15j %.8u %.2t %.10M %R"
+squeue -u $USER --format="%.18i %.9P %.20j %.8u %.2t %.10M %R"
