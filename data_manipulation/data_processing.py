@@ -52,7 +52,7 @@ def filter_list(data, word_count_min, word_count_max, quantity):
     Returns
     -------
     list
-        A list with the length of 'quantity' containing the filtered elements from the original data-modification-list. The elements
+        A list with the length of 'quantity' containing the filtered elements from the original data-list. The elements
         are randomly selected from the filtered domain and a sorted in descending order based on their word_count value.
     """
     filtered_dataset, filter_domain_size = filter_and_count(data, 'word_count', word_count_min, word_count_max)
@@ -74,7 +74,7 @@ def filter_list(data, word_count_min, word_count_max, quantity):
 
 def count_and_reformat(dataset, count_column, retain_columns):
     """
-    Counts text length in words for every data-modification point in 'column_name'-column and creates a new list with the specified
+    Counts text length in words for every data point in 'column_name'-column and creates a new list with the specified
     columns to be retained, in addition to a word count column as the last column. If one of the retained columns is
     named 'word_count', it must be renamed before execution, else it will be overwritten by this functions word_count.
 
