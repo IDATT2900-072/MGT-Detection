@@ -12,7 +12,7 @@ if len(sys.argv) == 2:
     args = sys.argv[1].split("-")
     if len(args) >= 3:
         if args[0] == "rob":
-            model_name = "roberta-large-openai-detector"
+            model_name = "roberta-large"
         else:
             model_name = "bigscience/bloomz-" + args[0]
         dataset_name = "research_abstracts_labeled" if args[1] == "abs" else "wiki_labeled"
