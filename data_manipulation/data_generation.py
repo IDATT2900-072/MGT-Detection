@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 import time
 
-from data_processing import word_length_of, filter_and_count, completion_bar
+from .data_processing import word_length_of, filter_and_count, completion_bar
 
 # Constants
 API_KEY = Path('../../api-keys/openai_key').read_text()

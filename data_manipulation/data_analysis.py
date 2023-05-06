@@ -1,16 +1,12 @@
 import matplotlib
-import pandas as pd
 import numpy as np
-import random
 
 from matplotlib import pyplot as plt
 from scipy.ndimage import gaussian_filter1d
 from scipy.stats import pearsonr
+from .data_processing import filter_and_count
 
 matplotlib.use('MacOSX')
-from datasets import load_dataset, concatenate_datasets, Dataset
-from data_processing import filter_and_count, completion_bar, count_and_reformat, sample_uniform_subset, \
-    substitute_duplicates_uniform
 
 
 def display_word_count_intervals(dataset, intervals, column_name):
@@ -242,11 +238,12 @@ def plot_scatter(plots: list[dict], d_lines=None, h_lines=None, v_lines=None, x_
     plt.show()
 
 
-def plot_loss_curves(plots, x_label=None, y_label=None, legend_offset=(1.0, 1.0), sigma=2):
+def plot_loss_curves(plots, deviations=None, x_label=None, y_label=None, legend_offset=(1.0, 1.0), sigma=2):
     for plot in plots:
         dataset = plot['dataset']
         positive_loss = []
         negative_loss = []
+        zero_loss = 0
 
         for data_point in dataset:
             real_word_count = data_point[plot['benchmark']]
@@ -255,8 +252,10 @@ def plot_loss_curves(plots, x_label=None, y_label=None, legend_offset=(1.0, 1.0)
 
             if loss > 0:
                 positive_loss.append((real_word_count, abs(loss)))
-            else:
+            elif loss < 0:
                 negative_loss.append((real_word_count, abs(loss)))
+            else:
+                zero_loss += 1
 
         with plt.style.context('ggplot'):
             fig, ax = plt.subplots(figsize=(10, 6))
@@ -271,26 +270,45 @@ def plot_loss_curves(plots, x_label=None, y_label=None, legend_offset=(1.0, 1.0)
                 x_unique, y_mean_abs_dev = calculate_mean_y_per_x(x_values, y_values)
                 x_unique, y_mean_abs_dev = zip(*sorted(zip(x_unique, y_mean_abs_dev)))
                 y_mean_abs_dev_filtered = gaussian_filter1d(y_mean_abs_dev, sigma)
-                ax.plot(x_unique, y_mean_abs_dev_filtered, label=plot['mean-abs-display'], color=plot['mean-abs-color'], alpha=plot['alpha'])
+                ax.plot(x_unique, y_mean_abs_dev_filtered, label=plot['mean-abs-display'], color=plot['mean-abs-color'],
+                        alpha=plot['alpha'])
 
             if positive_loss:
                 x_values, y_values = zip(*positive_loss)
                 x_unique, y_mean = calculate_mean_y_per_x(x_values, y_values)
                 x_unique, y_mean = zip(*sorted(zip(x_unique, y_mean)))
                 y_mean_filtered = gaussian_filter1d(y_mean, sigma)
-                ax.plot(x_unique, y_mean_filtered, label=plot['positive-display'], color=plot['positive-color'], alpha=plot['alpha'])
+                ax.plot(x_unique, y_mean_filtered, label=plot['positive-display'], color=plot['positive-color'],
+                        alpha=plot['alpha'])
 
             if negative_loss:
                 x_values, y_values = zip(*negative_loss)
                 x_unique, y_mean = calculate_mean_y_per_x(x_values, y_values)
                 x_unique, y_mean = zip(*sorted(zip(x_unique, y_mean)))
                 y_mean_filtered = gaussian_filter1d(y_mean, sigma)
-                ax.plot(x_unique, y_mean_filtered, label=plot['negative-display'], color=plot['negative-color'], alpha=plot['alpha'])
+                ax.plot(x_unique, y_mean_filtered, label=plot['negative-display'], color=plot['negative-color'],
+                        alpha=plot['alpha'])
+
+            if deviations:
+                for deviation in deviations:
+                    if 'zero-text' in deviation:
+                        ax.text(deviation['positioning'][0], deviation['positioning'][1],
+                                f"{deviation['zero-text']} {zero_loss}", color=deviation['color'],
+                                alpha=deviation['alpha'])
+                    if 'positive-text' in deviation:
+                        ax.text(deviation['positioning'][0], deviation['positioning'][1],
+                                f"{deviation['positive-text']} {len(positive_loss)}", color=deviation['color'],
+                                alpha=deviation['alpha'])
+                    if 'negative-text' in deviation:
+                        ax.text(deviation['positioning'][0], deviation['positioning'][1],
+                                f"{deviation['negative-text']} {len(negative_loss)}", color=deviation['color'],
+                                alpha=deviation['alpha'])
 
             if x_label:
                 ax.set_xlabel(x_label)
             if y_label:
                 ax.set_ylabel(y_label)
 
+            plt.subplots_adjust(left=0.07, bottom=0.143, right=0.93, top=0.943)
             ax.legend(facecolor='white', bbox_to_anchor=(legend_offset[0], legend_offset[1]))
             plt.show()

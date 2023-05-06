@@ -3,7 +3,7 @@ import csv
 import os
 import re
 
-from data_processing import word_length_of, completion_bar
+from .data_processing import word_length_of, completion_bar
 
 
 def reformat_supervised_learning(source_csv_path, title, real_label, real_word_count, generated_label, generated_word_count, target_dir_path,
