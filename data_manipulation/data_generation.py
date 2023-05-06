@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 import time
 
-from data_processing import word_length_of, filter_and_count, completion_bar
+from .data_processing import word_length_of, filter_and_count, completion_bar
 
 # Constants
 API_KEY = Path('../../api-keys/openai_key').read_text()
@@ -40,7 +40,7 @@ def generate_abstracts(data, target_file_name, target_dir_path="./", start_index
     """
 
     # Set up the input prompts
-    with open('chatgpt-prompt.json') as file:
+    with open('../prompts/chatgpt-prompt.json') as file:
         prompts = json.load(file)
     system_prompt = prompts['system_instruction']
     user_base_prompt = prompts['user_base_instruction']
