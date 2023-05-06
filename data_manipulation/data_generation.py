@@ -40,7 +40,7 @@ def generate_abstracts(data, target_file_name, target_dir_path="./", start_index
     """
 
     # Set up the input prompts
-    with open('../execution/chatgpt-prompt.json') as file:
+    with open('../prompts/chatgpt-prompt.json') as file:
         prompts = json.load(file)
     system_prompt = prompts['system_instruction']
     user_base_prompt = prompts['user_base_instruction']
