@@ -9,7 +9,9 @@ model_name = "roberta-wiki"
 dataset_name = "wiki-intros"
 dataset_name = "research abstracts"
 
-def create_confusion_matrix(model_name, dataset_name, trues, falses):
+title = model_name + " on " + dataset_name
+
+def create_confusion_matrix(title, trues, falses):
 
     # Gather results in array and normalize
     results = np.array([
@@ -25,7 +27,7 @@ def create_confusion_matrix(model_name, dataset_name, trues, falses):
     fig, ax = plt.subplots()
     im = ax.imshow(results, cmap="Blues")
 
-    ax.set_title(model_name + " on " + dataset_name)
+    ax.set_title(title)
     ax.set_xlabel("Predicted label")
     ax.set_ylabel("True label")
     ax.set_xticks(np.arange(len(labels_y)), labels=labels_y)
@@ -43,7 +45,8 @@ def create_confusion_matrix(model_name, dataset_name, trues, falses):
             text = ax.text(j, i, (str(results[i, j]) + "%"),
                         ha="center", va="center", color=color)
     fig.tight_layout()
-    plt.savefig(model_name + "_result.png", bbox_inches='tight')
+    plt.savefig("figures/"+ title + ".png", bbox_inches='tight')
     plt.show()
 
-create_confusion_matrix(model_name, dataset_name, trues, falses)
+if __name__ == "__main__":
+    create_confusion_matrix(title, trues, falses)
