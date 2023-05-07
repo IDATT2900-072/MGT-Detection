@@ -19,7 +19,7 @@ if len(sys.argv) == 2:
     if len(args) >= 3:
         model_name = "andreas122001/"
         if args[1] == "rob":
-            model_name += "roberta-large"
+            model_name += "roberta"
         else:
             model_name += "bloomz-" + args[1]
         if args[2] == "wiki":
@@ -34,6 +34,8 @@ if len(sys.argv) == 2:
 
 print(f"\nModel: {model_name}\nDataset: {dataset_name}\n")
 
+
+exit()
 # Load dataset
 dataset = datasets.load_dataset("NicolaiSivesind/human-vs-machine", dataset_name, split="test")
 if num_data:
@@ -82,3 +84,11 @@ sleep(1)
 print("\nResults: (t/f)")
 print("trues = " + str(trues))
 print("falses = " + str(falses))
+print()
+
+model_name = model_name.split("/")[-1]
+print(f"{model_name} on {dataset_name}")
+for i in trues:
+    print(i)
+for i in falses:
+    print(i)
