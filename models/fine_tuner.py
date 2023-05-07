@@ -144,7 +144,7 @@ class FineTuner:
 
     def predict(self, data: Union[str, List[str]]) -> torch.Tensor:
         """
-        Generates a prediction for the data-modification and returns probabilities as a tensor.
+        Generates a prediction for the data and returns probabilities as a tensor.
         """
         # Use GPU if available
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

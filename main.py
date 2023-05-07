@@ -3,7 +3,7 @@ import datasets
 import sys
 
 dataset_name = "wiki_labeled"
-ds_mlt = 0.1 # how much if the dataset to use - default 10%
+ds_mlt = 0.1 # how much of the dataset to use - default 10%
 model_name = "roberta-base"
 
 # Parses the job-name from the sbatch script for running bloomz-tuning

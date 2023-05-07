@@ -52,7 +52,7 @@ def filter_list(data, word_count_min, word_count_max, quantity):
     Returns
     -------
     list
-        A list with the length of 'quantity' containing the filtered elements from the original data-modification-list. The elements
+        A list with the length of 'quantity' containing the filtered elements from the original data-list. The elements
         are randomly selected from the filtered domain and a sorted in descending order based on their word_count value.
     """
     filtered_dataset, filter_domain_size = filter_and_count(data, 'word_count', word_count_min, word_count_max)
@@ -74,7 +74,7 @@ def filter_list(data, word_count_min, word_count_max, quantity):
 
 def count_and_reformat(dataset, count_column, retain_columns):
     """
-    Counts text length in words for every data-modification point in 'column_name'-column and creates a new list with the specified
+    Counts text length in words for every data point in 'column_name'-column and creates a new list with the specified
     columns to be retained, in addition to a word count column as the last column. If one of the retained columns is
     named 'word_count', it must be renamed before execution, else it will be overwritten by this functions word_count.
 
@@ -181,6 +181,46 @@ def sample_uniform_subset(dataset, column, subset_size, start, end):
             del word_count_lists[key]
 
     return subset
+
+
+def cleanup_whitespaces(text):
+    """
+    Cleans a text, replacing all newlines with double newline if preceding character is '.', '!', or "?", else replaces
+    with a single space character. All sequences of whitespaces are replaced with a space character unless it's a
+    newline.
+
+    Parameters
+    ----------
+    text : str
+        String of text to be cleaned.
+
+    Returns
+    -------
+    str
+        The cleaned version of the text.
+
+    """
+
+    # Replace all newlines which does not succeed '\n', '.', '!' or '?', and does not precede another newline, with a
+    # space character.
+    clean = re.sub(r'(?<![.!?\n])\n(?!\n)', ' ', text)
+
+    # Replace all newlines which succeeds a '.', '!' or '?' and does not precede another newline, with a double newline.
+    clean = re.sub(r'(?<=[.!?])\n(?!\n)', '\n\n', clean)
+
+    # Replace all non-newline sequences of whitespace with a single space character.
+    clean = re.sub(r'[^\S\n]+', ' ', clean)
+
+    # Remove all non-newline characters succeeding a newline character.
+    clean = re.sub(r'(\n[^\S\n]+)', '\n', clean)
+
+    # Remove any whitespace preceding first non-whitespace character of the text.
+    clean = re.sub(r'^\s+', '', clean)
+
+    # Remove everything after last '.', '!', or '?'.
+    clean = re.sub(r'([.!?])(?:(?!\1).)*$', r'\1', clean)
+
+    return clean
 
 
 def substitute_duplicates_uniform(dataset: Dataset, source_dataset, duplicate_column :str, source_distribution_column, size_goal, start, end, seed):

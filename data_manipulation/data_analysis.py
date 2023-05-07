@@ -1,15 +1,12 @@
 import matplotlib
-import pandas as pd
 import numpy as np
-import random
 
 from matplotlib import pyplot as plt
 from scipy.ndimage import gaussian_filter1d
+from scipy.stats import pearsonr
+from .data_processing import filter_and_count
 
 matplotlib.use('MacOSX')
-from datasets import load_dataset, concatenate_datasets, Dataset
-from data_processing import filter_and_count, completion_bar, count_and_reformat, sample_uniform_subset, \
-    substitute_duplicates_uniform
 
 
 def display_word_count_intervals(dataset, intervals, column_name):
@@ -37,7 +34,8 @@ def display_word_count_intervals(dataset, intervals, column_name):
         plt.show()
 
 
-def plot_distribution(plots: list[dict], start, end, sigma=2, x_label=None, y_label=None, save_to=None, title=None, y_lim=None, h_lines=None, v_lines=None, legend_offset=1.0):
+def plot_distribution(plots: list[dict], start, end, sigma=2, x_label=None, y_label=None, save_to=None, title=None,
+                      y_lim=None, h_lines=None, v_lines=None, legend_offset=1.0):
     # Set the plot style
     with plt.style.context('ggplot'):
         # Create the figure and axis objects
@@ -54,13 +52,15 @@ def plot_distribution(plots: list[dict], start, end, sigma=2, x_label=None, y_la
         if h_lines:
             for h_line in h_lines:
                 ax.axhline(h_line['value'], color=h_line['color'], linestyle='--', alpha=h_line['alpha'])
-                ax.text(h_line['offset'][0], h_line['value'] + h_line['offset'][1], h_line['text'], color=h_line['color'])
+                ax.text(h_line['offset'][0], h_line['value'] + h_line['offset'][1], h_line['text'],
+                        color=h_line['color'])
 
         # Set vertical lines if provided
         if v_lines:
             for v_line in v_lines:
                 ax.axvline(v_line['value'], color=v_line['color'], linestyle='--', alpha=0.8)
-                ax.text(v_line['value'] + v_line['offset'][0], v_line['offset'][1], v_line['text'], color=v_line['color'])
+                ax.text(v_line['value'] + v_line['offset'][0], v_line['offset'][1], v_line['text'],
+                        color=v_line['color'])
 
         for i, plot in enumerate(plots):
             counts = np.zeros(end - start + 1)
@@ -86,10 +86,12 @@ def plot_distribution(plots: list[dict], start, end, sigma=2, x_label=None, y_la
                 max_x_value = x_values[max_y_index]
 
                 # Draw a dashed line from the maximum y-value to the x-axis
-                ax.axvline(max_x_value, ymin=0, ymax=max_y_value / ax.get_ylim()[1], color=plot['color'], linestyle='--', alpha=plot['alpha'])
+                ax.axvline(max_x_value, ymin=0, ymax=max_y_value / ax.get_ylim()[1], color=plot['color'],
+                           linestyle='--', alpha=plot['alpha'])
 
                 # Display the x-value at the base of the dashed line
-                ax.text(max_x_value + 2 + 3 * len(str(max_x_value)), 0, f"{max_x_value}", color=plot['color'], ha='center', va='bottom')
+                ax.text(max_x_value + 2 + 3 * len(str(max_x_value)), 0, f"{max_x_value}", color=plot['color'],
+                        ha='center', va='bottom')
 
         # Set labels and title if provided
         if x_label:
@@ -114,7 +116,7 @@ def plot_distribution(plots: list[dict], start, end, sigma=2, x_label=None, y_la
 
 
 def plot_histogram(plots: list[dict], start, end, sigma=2, save_to=None):
-    bins = end-start+1
+    bins = end - start + 1
 
     # Set the plot style
     with plt.style.context('ggplot'):
@@ -133,7 +135,8 @@ def plot_histogram(plots: list[dict], start, end, sigma=2, save_to=None):
                 if start <= count <= end:
                     counts.append(count)
 
-            ax.hist(counts, bins=bins, range=(start, end), alpha=plot['alpha'], label=plot['display'], color=plot['color'])
+            ax.hist(counts, bins=bins, range=(start, end), alpha=plot['alpha'], label=plot['display'],
+                    color=plot['color'])
 
         # Set labels and title
         ax.set_xlabel('Length of text in words')
@@ -153,6 +156,7 @@ def plot_histogram(plots: list[dict], start, end, sigma=2, save_to=None):
         plt.savefig(save_to)
     plt.show()
 
+
 def calculate_mean_y_per_x(x_values, y_values):
     xy_dict = {}
     for x, y in zip(x_values, y_values):
@@ -164,7 +168,9 @@ def calculate_mean_y_per_x(x_values, y_values):
     mean_y_values = {x: y_data['sum'] / y_data['count'] for x, y_data in xy_dict.items()}
     return list(mean_y_values.keys()), list(mean_y_values.values())
 
-def plot_scatter(plots: list[dict], d_lines=None, h_lines=None, v_lines=None, x_label=None, y_label=None, y_lim=None, legend_offset=(1.0, 1.0), average_curve=None, sigma=2, correlations=None):
+
+def plot_scatter(plots: list[dict], d_lines=None, h_lines=None, v_lines=None, x_label=None, y_label=None, y_lim=None,
+                 legend_offset=(1.0, 1.0), average_curve=None, sigma=2, correlations=None):
     with plt.style.context('ggplot'):
         fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -177,12 +183,14 @@ def plot_scatter(plots: list[dict], d_lines=None, h_lines=None, v_lines=None, x_
         if h_lines:
             for h_line in h_lines:
                 ax.axhline(h_line['value'], color=h_line['color'], linestyle='--', alpha=h_line['alpha'])
-                ax.text(h_line['offset'][0], h_line['value'] + h_line['offset'][1], h_line['text'], color=h_line['color'])
+                ax.text(h_line['offset'][0], h_line['value'] + h_line['offset'][1], h_line['text'],
+                        color=h_line['color'])
 
         if v_lines:
             for v_line in v_lines:
                 ax.axvline(v_line['value'], color=v_line['color'], linestyle='--', alpha=0.8)
-                ax.text(v_line['value'] + v_line['offset'][0], v_line['offset'][1], v_line['text'], color=v_line['color'])
+                ax.text(v_line['value'] + v_line['offset'][0], v_line['offset'][1], v_line['text'],
+                        color=v_line['color'])
 
         for plot in plots:
             x_values = [data_point[plot['x']] for data_point in plot['dataset']]
@@ -194,17 +202,19 @@ def plot_scatter(plots: list[dict], d_lines=None, h_lines=None, v_lines=None, x_
                 x_unique, y_mean = calculate_mean_y_per_x(x_values, y_values)
                 x_unique, y_mean = zip(*sorted(zip(x_unique, y_mean)))
                 y_mean_filtered = gaussian_filter1d(y_mean, sigma)
-                ax.plot(x_unique, y_mean_filtered, label=average_curve['display'], color=average_curve['color'], alpha=average_curve['alpha'])
+                ax.plot(x_unique, y_mean_filtered, label=average_curve['display'], color=average_curve['color'],
+                        alpha=average_curve['alpha'])
 
             if correlations:
                 for correlation in correlations:
                     interval = correlation.get('interval', (min(x_values), max(x_values)))
                     x_interval_values = [x for x in x_values if interval[0] <= x <= interval[1]]
                     y_interval_values = [y for x, y in zip(x_values, y_values) if interval[0] <= x <= interval[1]]
-                    print(len(x_interval_values))
 
-                    corr = np.corrcoef(x_interval_values, y_interval_values)[0, 1]
-                    ax.text(correlation['positioning'][0], correlation['positioning'][1], f"{correlation['text']} {corr:.2f}", color=correlation['color'], alpha=correlation['alpha'])
+                    corr, p_value = pearsonr(x_interval_values, y_interval_values)
+                    ax.text(correlation['positioning'][0], correlation['positioning'][1],
+                            f"{correlation['text']} {corr:.2f} (p={p_value:.4f})", color=correlation['color'],
+                            alpha=correlation['alpha'])
 
         if d_lines:
             for d_line in d_lines:
@@ -216,8 +226,8 @@ def plot_scatter(plots: list[dict], d_lines=None, h_lines=None, v_lines=None, x_
                 x_end = min(x_max, (y_max - y_start) / y_increment * x_increment + x_start)
                 y_end = x_end * y_increment / x_increment + y_start - x_start * y_increment / x_increment
 
-                ax.plot([x_start, x_end], [y_start, y_end], label=d_line['display'], color=d_line['color'], linestyle='--', alpha=d_line['alpha'])
-
+                ax.plot([x_start, x_end], [y_start, y_end], label=d_line['display'], color=d_line['color'],
+                        linestyle='--', alpha=d_line['alpha'])
 
         if x_label:
             ax.set_xlabel(x_label)
@@ -228,22 +238,24 @@ def plot_scatter(plots: list[dict], d_lines=None, h_lines=None, v_lines=None, x_
     plt.show()
 
 
-
-def plot_loss_curves(plots, x_label=None, y_label=None, legend_offset=(1.0, 1.0), sigma=2):
+def plot_loss_curves(plots, deviations=None, x_label=None, y_label=None, legend_offset=(1.0, 1.0), sigma=2):
     for plot in plots:
         dataset = plot['dataset']
         positive_loss = []
         negative_loss = []
+        zero_loss = 0
 
         for data_point in dataset:
             real_word_count = data_point[plot['benchmark']]
             generated_word_count = data_point[plot['predicted']]
-            loss = real_word_count - generated_word_count
+            loss = generated_word_count - real_word_count
 
             if loss > 0:
                 positive_loss.append((real_word_count, abs(loss)))
-            else:
+            elif loss < 0:
                 negative_loss.append((real_word_count, abs(loss)))
+            else:
+                zero_loss += 1
 
         with plt.style.context('ggplot'):
             fig, ax = plt.subplots(figsize=(10, 6))
@@ -251,24 +263,52 @@ def plot_loss_curves(plots, x_label=None, y_label=None, legend_offset=(1.0, 1.0)
             ax.patch.set_facecolor('lightgrey')
             ax.patch.set_alpha(0.3)
 
+            all_losses = positive_loss + negative_loss
+
+            if all_losses:
+                x_values, y_values = zip(*all_losses)
+                x_unique, y_mean_abs_dev = calculate_mean_y_per_x(x_values, y_values)
+                x_unique, y_mean_abs_dev = zip(*sorted(zip(x_unique, y_mean_abs_dev)))
+                y_mean_abs_dev_filtered = gaussian_filter1d(y_mean_abs_dev, sigma)
+                ax.plot(x_unique, y_mean_abs_dev_filtered, label=plot['mean-abs-display'], color=plot['mean-abs-color'],
+                        alpha=plot['alpha'])
+
             if positive_loss:
                 x_values, y_values = zip(*positive_loss)
                 x_unique, y_mean = calculate_mean_y_per_x(x_values, y_values)
                 x_unique, y_mean = zip(*sorted(zip(x_unique, y_mean)))
                 y_mean_filtered = gaussian_filter1d(y_mean, sigma)
-                ax.plot(x_unique, y_mean_filtered, label=plot['positive-display'], color=plot['positive-color'], alpha=plot['alpha'])
+                ax.plot(x_unique, y_mean_filtered, label=plot['positive-display'], color=plot['positive-color'],
+                        alpha=plot['alpha'])
 
             if negative_loss:
                 x_values, y_values = zip(*negative_loss)
                 x_unique, y_mean = calculate_mean_y_per_x(x_values, y_values)
                 x_unique, y_mean = zip(*sorted(zip(x_unique, y_mean)))
                 y_mean_filtered = gaussian_filter1d(y_mean, sigma)
-                ax.plot(x_unique, y_mean_filtered, label=plot['negative-display'], color=plot['negative-color'], alpha=plot['alpha'])
+                ax.plot(x_unique, y_mean_filtered, label=plot['negative-display'], color=plot['negative-color'],
+                        alpha=plot['alpha'])
+
+            if deviations:
+                for deviation in deviations:
+                    if 'zero-text' in deviation:
+                        ax.text(deviation['positioning'][0], deviation['positioning'][1],
+                                f"{deviation['zero-text']} {zero_loss}", color=deviation['color'],
+                                alpha=deviation['alpha'])
+                    if 'positive-text' in deviation:
+                        ax.text(deviation['positioning'][0], deviation['positioning'][1],
+                                f"{deviation['positive-text']} {len(positive_loss)}", color=deviation['color'],
+                                alpha=deviation['alpha'])
+                    if 'negative-text' in deviation:
+                        ax.text(deviation['positioning'][0], deviation['positioning'][1],
+                                f"{deviation['negative-text']} {len(negative_loss)}", color=deviation['color'],
+                                alpha=deviation['alpha'])
 
             if x_label:
                 ax.set_xlabel(x_label)
             if y_label:
                 ax.set_ylabel(y_label)
 
+            plt.subplots_adjust(left=0.07, bottom=0.143, right=0.93, top=0.943)
             ax.legend(facecolor='white', bbox_to_anchor=(legend_offset[0], legend_offset[1]))
             plt.show()
