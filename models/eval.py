@@ -35,7 +35,6 @@ if len(sys.argv) == 2:
 print(f"\nModel: {model_name}\nDataset: {dataset_name}\n")
 
 
-exit()
 # Load dataset
 dataset = datasets.load_dataset("NicolaiSivesind/human-vs-machine", dataset_name, split="test")
 if num_data:
