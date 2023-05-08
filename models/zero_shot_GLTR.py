@@ -25,10 +25,19 @@ def calculate_probabilities(text):
     
     return output_dict
 
-user = "."
+def colored(text, val):
+    r = 255
+    g = int(255 - val*255)
+    b = int(255 - val*255)
+    return f"\033[38;2;{r};{g};{b}m{text}\033[0m"
+
+print("Initialized.")
+user = input()
 while user:
-    user = input()
     preds = calculate_probabilities(user)
     print(preds)
+    for k, v in zip(preds.keys(), preds.values()):
+        print(colored(k, v), end="")
 
+    user = input("\n")
 
