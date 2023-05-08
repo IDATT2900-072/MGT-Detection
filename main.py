@@ -1,10 +1,20 @@
 from models.fine_tuner import FineTuner
 import datasets
 import sys
+from data_manipulation.data_processing import remove_white_spaces
 
 dataset_name = "wiki_labeled"
 ds_mlt = 0.1 # how much of the dataset to use - default 10%
 model_name = "roberta-base"
+use_cross = False
+
+def smallify(dataset, relative_size):
+    for split_name, split in zip(dataset.keys(), dataset.values()):
+        dataset[split_name] = split.select(range(int(len(split)*relative_size)))
+
+def concatinate_ds(ds1, ds2):
+    for split_name in ds1.keys():
+        ds1[split_name] = datasets.concatenate_datasets([ds1[split_name], ds2[split_name]])
 
 # Parses the job-name from the sbatch script for running bloomz-tuning
 if len(sys.argv) == 2:
@@ -15,16 +25,36 @@ if len(sys.argv) == 2:
             model_name = "roberta-base"
         else:
             model_name = "bigscience/bloomz-" + args[0]
-        dataset_name = "research_abstracts_labeled" if args[1] == "abs" else "wiki_labeled"
+        
+        use_cross = False
+        if args[1] == "wiki":
+            dataset_name = "wiki_labeled"
+        elif args[1] == "abs":
+            dataset_name = "research_abstracts_labeled"
+        elif args[1] == "cross":
+            dataset_name = "cross"
+            use_cross = True
         ds_mlt = 1/float(args[2])
         print("Using arguments: ", model_name, dataset_name, ds_mlt)
     else:
         raise Exception("Expected following format for input argument: 'model-dataset-datasetSize-xxx")
 
-ds = datasets.load_dataset("NicolaiSivesind/human-vs-machine", dataset_name)
-ds['train'] = ds['train'].select(range(int(len(ds['train'])*ds_mlt)))
-ds['test'] = ds['test'].select(range(int(len(ds['test'])*ds_mlt)))
-ds['validation'] = ds['validation'].select(range(int(len(ds['validation'])*ds_mlt)))
+if use_cross:
+    print("Using mixed dataset")
+    ds = datasets.load_dataset("NicolaiSivesind/human-vs-machine", "wiki_labeled")
+    ds2 = datasets.load_dataset("NicolaiSivesind/human-vs-machine", "research_abstracts_labeled")
+
+    smallify(ds, 0.05)
+    smallify(ds2, 0.5)
+    remove_white_spaces(ds2)
+
+    concatinate_ds(ds, ds2)
+else:
+    ds = datasets.load_dataset("NicolaiSivesind/human-vs-machine", dataset_name)
+
+smallify(ds, ds_mlt)
+
+print(ds)
 
 # This dataset must be pre-processed - removing newlines and white-spaces
 if dataset_name == "research_abstracts_labeled":
