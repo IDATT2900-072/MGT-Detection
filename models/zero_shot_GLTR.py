@@ -10,23 +10,18 @@ model.to(device)
 
 def calculate_probabilities(text):
     encoding = tokenizer(text, return_tensors="pt")
-    encoding = encoding['input_ids'][0]
-    encoding = torch.cat((torch.tensor([0]),encoding))
+    encoding = encoding['input_ids']
+    encoding = torch.cat((torch.tensor([11]),encoding[0])).reshape(1, -1)
+    encoding = encoding.to(device)
 
-    preds = []
-    for i in range(encoding.shape[0]-1):
-        token = torch.tensor([[encoding[i]]]).to(device)
-        next_token = encoding[i+1].item()
+    out = model(encoding).logits.squeeze()
+    predictions = torch.softmax(out, -1).cpu().detach().numpy()
 
-        predictions = torch.softmax(model(token).logits.squeeze(), -1)
-
-        next_token_prediction = predictions[next_token].cpu().detach().numpy()# / torch.max(predictions).cpu().detach().numpy()
-        preds.append(next_token_prediction)
-    
     output_dict = {}
-    for token, prob in zip(encoding[1:], preds):
+    for token, prob in zip(encoding[0,1:], predictions):
         decoded_token = tokenizer.decode(token)
-        output_dict[decoded_token] = prob.item()
+        output_dict[decoded_token] = prob[token]
+    output_dict
     
     return output_dict
 
