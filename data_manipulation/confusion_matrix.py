@@ -2,14 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Input
-trues = [22484, 22445]
-falses = [55, 16]
+trues = [638, 1039]
+falses = [461, 862]
 
-model_name = "roberta-wiki"
-dataset_name = "wiki-intros"
-dataset_name = "research abstracts"
-
-title = model_name + " on " + dataset_name
+title = "roberta-wiki-detector on research_abstracts_labeled"
 
 def create_confusion_matrix(title, trues, falses):
 
@@ -18,16 +14,17 @@ def create_confusion_matrix(title, trues, falses):
         [trues[0], falses[1]],
         [falses[0], trues[1]]
         ])
-    results = np.round((results / np.sum(results))*100, 2)
+    percent = np.round((results / np.sum(results))*100, 2)
 
     # Plot as heatmap
     labels_x = ["0", "1"]
     labels_y = ["0", "1"]
 
     fig, ax = plt.subplots()
-    im = ax.imshow(results, cmap="Blues")
+    im = ax.imshow(percent, cmap="Reds")
 
-    ax.set_title(title)
+    
+    ax.set_title(f"(n={np.sum(results)})", y=-0.20)
     ax.set_xlabel("Predicted label")
     ax.set_ylabel("True label")
     ax.set_xticks(np.arange(len(labels_y)), labels=labels_y)
@@ -36,13 +33,16 @@ def create_confusion_matrix(title, trues, falses):
     cbar = ax.figure.colorbar(im, ax=ax)
     cbar.ax.set_ylabel("Percentage", rotation=-90, va="bottom")
 
+
+    color_threshold = ((np.max(percent) + np.min(percent)) / 2) + (np.max(percent) - np.min(percent))*0.1
+    print(color_threshold)
     for i in range(len(labels_x)):
         for j in range(len(labels_y)):
-            if results[i, j] < 20:
+            if percent[i, j] < color_threshold:
                 color = "black"
             else:
                 color = "w"
-            text = ax.text(j, i, (str(results[i, j]) + "%"),
+            text = ax.text(j, i, (f"{str(percent[i, j])}%\n({results[i, j]})"),
                         ha="center", va="center", color=color)
     fig.tight_layout()
     plt.savefig("figures/"+ title + ".png", bbox_inches='tight')
