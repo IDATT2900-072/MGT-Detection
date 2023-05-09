@@ -115,7 +115,7 @@ def plot_distribution(plots: list[dict], start, end, sigma=2, x_label=None, y_la
     plt.show()
 
 
-def plot_histogram(plots: list[dict], start, end, sigma=2, save_to=None):
+def plot_histogram(plots: list[dict], start, end, x_label, y_label, y_lim=None, save_to=None):
     bins = end - start + 1
 
     # Set the plot style
@@ -139,8 +139,11 @@ def plot_histogram(plots: list[dict], start, end, sigma=2, save_to=None):
                     color=plot['color'])
 
         # Set labels and title
-        ax.set_xlabel('Length of text in words')
-        ax.set_ylabel('Number of texts')
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+
+        if y_lim:
+            ax.set_ylim(y_lim)
 
         # Rotate x-axis labels for better readability
         plt.xticks(rotation=90)
@@ -211,10 +214,16 @@ def plot_scatter(plots: list[dict], d_lines=None, h_lines=None, v_lines=None, x_
                     x_interval_values = [x for x in x_values if interval[0] <= x <= interval[1]]
                     y_interval_values = [y for x, y in zip(x_values, y_values) if interval[0] <= x <= interval[1]]
 
+                    interval_text = f"∀x ∈ [{interval[0]}, {interval[1]}]:"
+
                     corr, p_value = pearsonr(x_interval_values, y_interval_values)
-                    ax.text(correlation['positioning'][0], correlation['positioning'][1],
-                            f"{correlation['text']} {corr:.2f} (p={p_value:.4f})", color=correlation['color'],
-                            alpha=correlation['alpha'])
+                    ax.text(correlation['positioning'][0],
+                            correlation['positioning'][1],
+                            f"{interval_text}{' ' * correlation['spaces'][0]} n = {len(x_interval_values)},"
+                            f"{' ' * correlation['spaces'][1]} r = {corr:.2f}{' ' * correlation['spaces'][2]}∧"
+                            f"{' ' * correlation['spaces'][2]} p={p_value:.2f}",
+                            color=correlation['color'],
+                            alpha=correlation['alpha'], bbox=dict(facecolor='white', edgecolor='grey', boxstyle='round,pad=0.5'))
 
         if d_lines:
             for d_line in d_lines:
@@ -238,7 +247,7 @@ def plot_scatter(plots: list[dict], d_lines=None, h_lines=None, v_lines=None, x_
     plt.show()
 
 
-def plot_loss_curves(plots, deviations=None, x_label=None, y_label=None, legend_offset=(1.0, 1.0), sigma=2):
+def plot_loss_curves(plots, deviations=None, x_label=None, y_label=None, v_lines=None, legend_offset=(1.0, 1.0), sigma=2):
     for plot in plots:
         dataset = plot['dataset']
         positive_loss = []
@@ -262,6 +271,12 @@ def plot_loss_curves(plots, deviations=None, x_label=None, y_label=None, legend_
 
             ax.patch.set_facecolor('lightgrey')
             ax.patch.set_alpha(0.3)
+
+            if v_lines:
+                for v_line in v_lines:
+                    ax.axvline(v_line['value'], color=v_line['color'], linestyle='--', alpha=0.8)
+                    ax.text(v_line['value'] + v_line['offset'][0], v_line['offset'][1], v_line['text'],
+                            color=v_line['color'])
 
             all_losses = positive_loss + negative_loss
 
