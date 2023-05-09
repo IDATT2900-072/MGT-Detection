@@ -10,20 +10,6 @@ from data_manipulation.data_processing import sample_uniform_subset
 from data_manipulation.csv_writing import create_csv_if_nonexistent, write_csv_row, path_to_csv
 
 
-def init_csv(target_dir_path, target_file_name):
-    # Initiate CSV
-    path = target_dir_path + "/" + target_file_name + ".csv"
-    if not Path(path).is_file():
-        print("No file already exists. Creating blank CSV\n")
-        os.makedirs(target_dir_path, exist_ok=True)
-        with open(path, 'w') as f:
-            writer = csv.writer(f)
-            writer.writerow(['title', 'real_abstract', 'real_word_count', 'generated_abstract', 'generated_word_count'])
-    else:
-        print("CSV-file already exists. Will append new rows to existing document. Cancel execution if this is not "
-              "intended.\n")
-
-
 class Prompter:
     with open('../prompts/classification-prompts.json') as file:
         prompts = json.load(file)
