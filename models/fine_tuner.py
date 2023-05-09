@@ -6,11 +6,18 @@ import wandb
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer, pipeline
 from typing import Dict, List, Union
 import os
+import re
 
 class FineTuner:
     """Fine-tunes a pre-trained model on a specific dataset"""
 
-    def __init__(self, model_name, dataset, num_epochs=5, max_tokenized_length=None, logging_steps=500, do_wandb_logging=True):
+    def __init__(self, model_name, dataset, 
+                 num_epochs=5, 
+                 max_tokenized_length=None, 
+                 logging_steps=500, 
+                 do_wandb_logging=True,
+                 remove_white_spaces=False,
+                 ):
         self.test_dataset = None
         self.dataset = dataset
         self.labels = dataset['train'].features['label'].names
@@ -31,16 +38,28 @@ class FineTuner:
         # Initialize trainer
         self.trainer = self.init_trainer()
 
+        # Pre-process dataset
+        if remove_white_spaces:
+            print("Removing white-spaces")
+            def remove_newline(dataset):
+                dataset['text'] = re.sub(r'\s+', ' ', dataset['text'])        
+                return dataset
+
+            for split_name, split in zip(self.dataset.keys(), self.dataset.values()):
+                self.dataset[split_name] = split.map(remove_newline)
+
         # Initialize Weights and Biases
         if self.do_wandb_logging:
-            wandb.init(project="IDATT2900-072",
+            self.wandb = wandb.init(project="IDATT2900-072",
                     config={
                         'base_model': model_name,
                         'dataset': dataset['train'].config_name,
                         'train_dataset_size': len(dataset['train']),
                         'eval_dataset_size': len(dataset['validation']),
                         'max_tokenized_length': self.max_tokenized_length,
-                    })
+                    },
+                    tags=[("no-white-space" if remove_white_spaces else "white-space")]
+                )
         else:
             os.environ["WANDB_DISABLED"] = "true"
                        

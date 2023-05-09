@@ -1,18 +1,41 @@
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import datasets
 import numpy as np
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 from time import sleep
+import sys
 
 model_name = "andreas122001/bloomz-560m-wiki-detector"
 dataset_name = "wiki_labeled"
 num_data = None
 
+# Parses the job-name from the sbatch script for running bloomz-tuning
+# eval-rob-wiki-wiki
+if len(sys.argv) == 2:
+    print("Using arguments from sbatch")
+    args = sys.argv[1].split("-")
+    if len(args) >= 3:
+        model_name = "andreas122001/"
+        if args[1] == "rob":
+            model_name += "roberta"
+        else:
+            model_name += "bloomz-" + args[1]
+        if args[2] == "wiki":
+            model_name += "-wiki-detector"
+        elif args[2] == "abs":
+            model_name += "-academic-detector"
+    
+        dataset_name = "research_abstracts_labeled" if args[3] == "abs" else "wiki_labeled"
+        print("Using arguments: ", model_name, dataset_name)
+    else:
+        raise Exception("Expected following format for input argument: 'eval-model-trainDataset-testDataset-xxx")
+
 print(f"\nModel: {model_name}\nDataset: {dataset_name}\n")
 
+
+exit()
 # Load dataset
 dataset = datasets.load_dataset("NicolaiSivesind/human-vs-machine", dataset_name, split="test")
 if num_data:
@@ -59,5 +82,13 @@ for i, batch in enumerate(tqdm(dataloader)):
 # Print result - sleep so tqdm doesn't overwrite results
 sleep(1)
 print("\nResults: (t/f)")
-print(str(trues))
-print(str(falses))
+print("trues = " + str(trues))
+print("falses = " + str(falses))
+print()
+
+model_name = model_name.split("/")[-1]
+print(f"{model_name} on {dataset_name}")
+for i in trues:
+    print(i)
+for i in falses:
+    print(i)
