@@ -10,7 +10,7 @@ from data_manipulation.data_processing import sample_uniform_subset
 from data_manipulation.csv_writing import create_csv_if_nonexistent, write_csv_row, path_to_csv
 
 
-class Prompter:
+class PromptClassifier:
     with open('../prompts/classification-prompts.json') as file:
         prompts = json.load(file)
 
@@ -22,7 +22,7 @@ class Prompter:
 
     def classify_set(self, target_dir_path, target_files_base_name, num_classifications, title_column, human_column,
                      generated_column, human_word_count_column, generated_word_count_column, min_word_count,
-                     max_word_count, zero_shot=True, few_shot=True):
+                     max_word_count, zero_shot=True, few_shot=True, start_index=0):
         # Sample a wc-uniform set of prompt-task-bundles
         task_bundles = self.sample_few_shot_bundles(n_bundles=num_classifications,
                                                     title_column=title_column,
@@ -46,14 +46,16 @@ class Prompter:
 
         # Perform classification
         bundle_size = len(task_bundles)
-        for i, bundle in enumerate(task_bundles):
+        for i in range(start_index, bundle_size):
+            bundle = task_bundles[i]
+
             # Zero-shot
             if zero_shot:
                 print('\r', f'Zero-shot: {i + 1}/{bundle_size}', end="")
                 prediction, human_probability, generated_probability, prompt_response = self.zero_shot(bundle['input_text'])
                 row = [bundle['input_title'], bundle['input_word_count'], bundle['input_label'],
                        prediction, human_probability, generated_probability, prompt_response]
-                write_csv_row(row, path_to_csv(target_files_base_name, zero_shot_file_name))
+                write_csv_row(row, path_to_csv(target_dir_path, zero_shot_file_name))
 
             # Few-shot
             if few_shot:
@@ -62,7 +64,7 @@ class Prompter:
                     bundle['input_text'])
                 row = [bundle['input_title'], bundle['input_word_count'], bundle['input_label'],
                        prediction, human_probability, generated_probability, prompt_response]
-                write_csv_row(row, path_to_csv(target_files_base_name, zero_shot_file_name))
+                write_csv_row(row, path_to_csv(target_dir_path, zero_shot_file_name))
 
         print("\n\nClassification complete")
 

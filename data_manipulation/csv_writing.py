@@ -21,8 +21,8 @@ def create_csv_if_nonexistent(columns, target_dir_path, target_file_name):
               "intended.\n")
 
 
-def write_csv_row(row, path_to_csv):
-    with open(path_to_csv, 'a') as f:
+def write_csv_row(row, path):
+    with open(path, 'a') as f:
         writer = csv.writer(f)
         writer.writerow(row)
 
