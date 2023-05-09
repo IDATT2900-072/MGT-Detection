@@ -6,17 +6,17 @@ import time
 import torch
 
 from pathlib import Path
-from data_manipulation.data_processing import sample_uniform_subset, completion_bar
+from data_manipulation.data_processing import sample_uniform_subset
 from data_manipulation.csv_writing import create_csv_if_nonexistent, write_csv_row, path_to_csv
 
 
 def init_csv(target_dir_path, target_file_name):
     # Initiate CSV
-    path_to_csv = target_dir_path + "/" + target_file_name + ".csv"
-    if not Path(path_to_csv).is_file():
+    path = target_dir_path + "/" + target_file_name + ".csv"
+    if not Path(path).is_file():
         print("No file already exists. Creating blank CSV\n")
         os.makedirs(target_dir_path, exist_ok=True)
-        with open(path_to_csv, 'w') as f:
+        with open(path, 'w') as f:
             writer = csv.writer(f)
             writer.writerow(['title', 'real_abstract', 'real_word_count', 'generated_abstract', 'generated_word_count'])
     else:
@@ -35,9 +35,18 @@ class Prompter:
         self.MODEL = model
 
     def classify_set(self, target_dir_path, target_files_base_name, num_classifications, title_column, human_column,
-                     generated_column,
-                     human_word_count_column, generated_word_count_column, min_word_count, max_word_count,
-                     zero_shot=True, few_shot=True):
+                     generated_column, human_word_count_column, generated_word_count_column, min_word_count,
+                     max_word_count, zero_shot=True, few_shot=True):
+        # Sample a wc-uniform set of prompt-task-bundles
+        task_bundles = self.sample_few_shot_bundles(n_bundles=num_classifications,
+                                                    title_column=title_column,
+                                                    human_column=human_column,
+                                                    generated_column=generated_column,
+                                                    human_word_count_column=human_word_count_column,
+                                                    generated_word_count_column=generated_word_count_column,
+                                                    min_word_count=min_word_count,
+                                                    max_word_count=max_word_count)
+
         # Create CSV
         columns = ['title', 'word_count', 'label',
                    'predicted', 'human_probability', 'generated_probability', 'prompt_response']
@@ -49,23 +58,13 @@ class Prompter:
         if few_shot:
             create_csv_if_nonexistent(columns, target_dir_path, few_shot_file_name)
 
-        # Sample a wc-uniform set of prompt-task-bundles
-        task_bundles = self.sample_few_shot_bundles(n_bundles=num_classifications,
-                                                    title_column=title_column,
-                                                    human_column=human_column,
-                                                    generated_column=generated_column,
-                                                    human_word_count_column=human_word_count_column,
-                                                    generated_word_count_column=generated_word_count_column,
-                                                    min_word_count=min_word_count,
-                                                    max_word_count=max_word_count)
-
+        # Perform classification
         bundle_size = len(task_bundles)
         for i, bundle in enumerate(task_bundles):
             # Zero-shot
             if zero_shot:
                 print('\r', f'Zero-shot: {i + 1}/{bundle_size}', end="")
-                prediction, human_probability, generated_probability, prompt_response = self.zero_shot(
-                    bundle['input_text'])
+                prediction, human_probability, generated_probability, prompt_response = self.zero_shot(bundle['input_text'])
                 row = [bundle['input_title'], bundle['input_word_count'], bundle['input_label'],
                        prediction, human_probability, generated_probability, prompt_response]
                 write_csv_row(row, path_to_csv(target_files_base_name, zero_shot_file_name))

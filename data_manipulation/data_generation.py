@@ -9,7 +9,7 @@ from pathlib import Path
 import time
 
 from .data_processing import word_length_of, filter_and_count, completion_bar
-from csv_writing import create_csv_if_nonexistent, write_csv_row, path_to_csv
+from .csv_writing import create_csv_if_nonexistent, write_csv_row, path_to_csv
 
 # Constants
 API_KEY = Path('../../api-keys/openai_key').read_text()
