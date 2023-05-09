@@ -22,7 +22,7 @@ class PromptClassifier:
 
     def classify_set(self, target_dir_path, target_files_base_name, num_classifications, title_column, human_column,
                      generated_column, human_word_count_column, generated_word_count_column, min_word_count,
-                     max_word_count, zero_shot=True, few_shot=True, start_index=0):
+                     max_word_count, zero_shot=True, few_shot=True, start_index=0, debug=False):
         # Sample a wc-uniform set of prompt-task-bundles
         task_bundles = self.sample_few_shot_bundles(n_bundles=num_classifications,
                                                     title_column=title_column,
@@ -51,31 +51,42 @@ class PromptClassifier:
 
             # Zero-shot
             if zero_shot:
-                print('\r', f'Zero-shot: {i + 1}/{bundle_size}', end="")
-                prediction, human_probability, generated_probability, prompt_response = self.zero_shot(bundle['input_text'])
+                print('\r', f'{i + 1}/{bundle_size}, Zero-shot | {i}/{bundle_size}, Few-shot', end="")
+                prediction, human_probability, generated_probability, prompt_response = self.zero_shot(bundle['input_text'], debug)
                 row = [bundle['input_title'], bundle['input_word_count'], bundle['input_label'],
                        prediction, human_probability, generated_probability, prompt_response]
+
+                if debug:
+                    print(f"\nResponse: {row}")
+
                 write_csv_row(row, path_to_csv(target_dir_path, zero_shot_file_name))
 
             # Few-shot
             if few_shot:
-                print('\r', f'Few-shot: {i + 1}/{bundle_size}', end="")
-                prediction, human_probability, generated_probability, prompt_response = self.few_shot(
-                    bundle['input_text'])
+                print('\r', f'{i + 1}/{bundle_size}, Zero-shot | {i+1}/{bundle_size}, Few-shot', end="")
+                prediction, human_probability, generated_probability, prompt_response = self.few_shot(bundle, debug)
                 row = [bundle['input_title'], bundle['input_word_count'], bundle['input_label'],
                        prediction, human_probability, generated_probability, prompt_response]
-                write_csv_row(row, path_to_csv(target_dir_path, zero_shot_file_name))
+
+                if debug:
+                    print(f"\nResponse: {row}")
+
+                write_csv_row(row, path_to_csv(target_dir_path, few_shot_file_name))
+
+            if debug:
+                print(f"\n\nDebug. i:{i}")
+                return
 
         print("\n\nClassification complete")
 
     def sample_few_shot_bundles(self, n_bundles, title_column, human_column, generated_column, human_word_count_column,
                                 generated_word_count_column, min_word_count, max_word_count):
         subset_size = n_bundles * 4  # 6 examples, 2 from each row (3 rows), 1 input_text from 1 row.
-        print(subset_size)
 
         subset = sample_uniform_subset(self.dataset, human_word_count_column, subset_size, min_word_count,
                                        max_word_count)
-        print(len(subset))
+        print(f"\nTotal rows in few-shot task bundles {len(subset)}")
+
         subset.sort(key=lambda x: x[human_word_count_column])
 
         task_bundles = []
@@ -111,11 +122,15 @@ class PromptClassifier:
 
         return task_bundles
 
-    def zero_shot(self, text_sample):
+    def zero_shot(self, text_sample, debug=False):
         prompt = self.prompts["zero-shot"].format(input_text=text_sample)
+
+        if debug:
+            print(f"\n\n{prompt}")
+
         return self.classify(prompt)
 
-    def few_shot(self, task_bundle):
+    def few_shot(self, task_bundle, debug=False):
         prompt = self.prompts["few-shot"].format(human_text_1=task_bundle['example_1'],
                                                  generated_text_1=task_bundle['example_2'],
                                                  human_text_2=task_bundle['example_3'],
@@ -123,6 +138,9 @@ class PromptClassifier:
                                                  human_text_3=task_bundle['example_5'],
                                                  generated_text_3=task_bundle['example_6'],
                                                  input_text=task_bundle['input_text'])
+        if debug:
+            print(f"\n\n{prompt}")
+
         return self.classify(prompt)
 
     def classify(self, prompt, attempts=0):
@@ -142,7 +160,6 @@ class PromptClassifier:
             "logit_bias": {
                 "20490": 20,  # "Human
                 "8645": 20,  # "Gener"
-                "515": 20,  # "ated"
             },
             "n": 1
         }
@@ -162,10 +179,10 @@ class PromptClassifier:
             # Calculate probabilities using softmax function
             logits = torch.tensor([logits_human, logits_generated])
             probabilities = torch.softmax(logits, dim=-1)
-            human_probability = probabilities[0].item()
-            machine_probability = probabilities[1].item()
+            human_probability = round(probabilities[0].item(), 4)
+            machine_probability = round(probabilities[1].item(), 4)
 
-            prediction = "human" if human_probability > machine_probability else "generated"
+            prediction = "Human" if human_probability > machine_probability else "Generated"
 
             return prediction, human_probability, machine_probability, answer
         else:

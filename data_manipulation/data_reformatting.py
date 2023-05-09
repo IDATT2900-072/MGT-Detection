@@ -111,5 +111,5 @@ def recount_words_csv(column_pairs: [(str, str)], source_csv_path, target_dir_pa
 
             new_data[i][count_index] = word_length_of(row[text_index])
 
-    write_csv(fields, csv, target_dir_path, target_file_name)
+    write_csv(fields, new_data, target_dir_path, target_file_name)
     print(f"\nColumn(s) recounted.")

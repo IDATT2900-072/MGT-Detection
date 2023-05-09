@@ -215,7 +215,7 @@ def cleanup_whitespaces(text):
     clean = re.sub(r'(\n[^\S\n]+)', '\n', clean)
 
     # Remove any whitespace preceding first non-whitespace character of the text.
-    clean = re.sub(r'^\s+', '', clean)
+    clean = clean.strip()
 
     return clean
 
