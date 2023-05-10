@@ -1,11 +1,12 @@
-import requests
-import csv
-import os
-import json
-import time
-import torch
+from collections import defaultdict
 
-from pathlib import Path
+import numpy as np
+import requests
+import json
+import torch
+import time
+import tiktoken
+
 from data_manipulation.data_processing import sample_uniform_subset
 from data_manipulation.csv_writing import create_csv_if_nonexistent, write_csv_row, path_to_csv
 
@@ -14,15 +15,28 @@ class PromptClassifier:
     with open('../prompts/classification-prompts.json') as file:
         prompts = json.load(file)
 
-    def __init__(self, dataset, api_key, model):
+    def __init__(self, dataset, api_key, model, ban_bias=-100, boost_bias=15):
         self.dataset = dataset
         self.API_KEY = api_key
         self.GPT_API_URL = "https://api.openai.com/v1/completions"
         self.MODEL = model
+        self.tokenizer = tiktoken.encoding_for_model(model)
+        self.logit_biases = {}
 
-    def classify_set(self, target_dir_path, target_files_base_name, num_classifications, title_column, human_column,
-                     generated_column, human_word_count_column, generated_word_count_column, min_word_count,
-                     max_word_count, zero_shot=True, few_shot=True, start_index=0, debug=False):
+        # Logit bias
+        banned_words = [" ", "\\", "n", "\n", "\n", "Class", " Class", "class", ' class', "Label", "Answer", "Prediction"]
+        boosted_words = ["Human", "Machine"]
+
+        for banned, boosted in zip(banned_words, boosted_words):
+            for token in self.tokenizer.encode(banned):
+                self.logit_biases[token] = ban_bias
+
+            for token in self.tokenizer.encode(boosted):
+                self.logit_biases[token] = boost_bias
+
+    def classify_set(self, target_dir_path, target_files_base_name, num_classifications, title_column,
+                     human_column, generated_column, human_word_count_column, generated_word_count_column,
+                     min_word_count, max_word_count, zero_shot=True, few_shot=True, start_index=0, debug=False):
         # Sample a wc-uniform set of prompt-task-bundles
         task_bundles = self.sample_few_shot_bundles(n_bundles=num_classifications,
                                                     title_column=title_column,
@@ -60,6 +74,7 @@ class PromptClassifier:
                     print(f"\nResponse: {row}")
 
                 write_csv_row(row, path_to_csv(target_dir_path, zero_shot_file_name))
+                time.sleep(3)
 
             # Few-shot
             if few_shot:
@@ -72,6 +87,7 @@ class PromptClassifier:
                     print(f"\nResponse: {row}")
 
                 write_csv_row(row, path_to_csv(target_dir_path, few_shot_file_name))
+                time.sleep(3)
 
             if debug:
                 print(f"\n\nDebug. i:{i}")
@@ -114,7 +130,7 @@ class PromptClassifier:
                 "input_text": subset[i + 7][generated_column],
                 "input_word_count": subset[i + 7][generated_word_count_column],
                 "input_title": subset[i + 7][title_column],
-                "input_label": "Generated"
+                "input_label": "Machine"
             }
 
             task_bundles.append(human_text)
@@ -128,7 +144,7 @@ class PromptClassifier:
         if debug:
             print(f"\n\n{prompt}")
 
-        return self.classify(prompt)
+        return self.classify(prompt, debug=debug)
 
     def few_shot(self, task_bundle, debug=False):
         prompt = self.prompts["few-shot"].format(human_text_1=task_bundle['example_1'],
@@ -141,9 +157,9 @@ class PromptClassifier:
         if debug:
             print(f"\n\n{prompt}")
 
-        return self.classify(prompt)
+        return self.classify(prompt, debug=debug)
 
-    def classify(self, prompt, attempts=0):
+    def classify(self, prompt, debug=False, attempts=0):
         # Set up content for the API-call
         headers = {
             "Content-Type": "application/json",
@@ -153,14 +169,10 @@ class PromptClassifier:
         content = {
             "model": self.MODEL,
             "prompt": prompt,
-            "max_tokens": 10,
-            "temperature": 0.3,
-            "top_p": 1,
+            "max_tokens": 1,
+            "temperature": 0,
             "logprobs": 5,
-            "logit_bias": {
-                "20490": 20,  # "Human
-                "8645": 20,  # "Gener"
-            },
+            "logit_bias": self.logit_biases,
             "n": 1
         }
 
@@ -170,11 +182,17 @@ class PromptClassifier:
         if response.status_code == 200:
             response = response.json()
 
-            answer = response["choices"][0]["text"].strip()
+            answer = response["choices"][0]["text"]
 
-            # Extract the logits for human-produced and machine-generated labels
-            logits_human = response["choices"][0]["logprobs"]["top_logprobs"][0]["Human"]
-            logits_generated = response["choices"][0]["logprobs"]["top_logprobs"][0]["Gener"]
+            # Retrieve log-probabilities
+            top_logprobs = response["choices"][0]["logprobs"]["top_logprobs"][0]
+
+            if debug:
+                print(f"Top logprobs: {top_logprobs}")
+                print(f"Answer:\"{answer}\"")
+
+            logits_human = top_logprobs['Human']  # + top_logprobs[' Human']
+            logits_generated = top_logprobs['Machine']  # + top_logprobs[' Machine']
 
             # Calculate probabilities using softmax function
             logits = torch.tensor([logits_human, logits_generated])
@@ -182,14 +200,17 @@ class PromptClassifier:
             human_probability = round(probabilities[0].item(), 4)
             machine_probability = round(probabilities[1].item(), 4)
 
-            prediction = "Human" if human_probability > machine_probability else "Generated"
+            if debug:
+                print(f"Probabilities. {probabilities}")
+
+            prediction = "Human" if human_probability >= machine_probability else "Machine"
 
             return prediction, human_probability, machine_probability, answer
         else:
             if attempts < 3:
-                print(response.text)
+                # print(response.text)
                 print(f"\n API-error. Reattempting API-call. Attempt {attempts + 1}")
                 time.sleep(5)
-                return self.classify(prompt, attempts + 1)
+                return self.classify(prompt, debug=debug, attempts=attempts + 1,)
             else:
                 raise RuntimeError(f"API-error: {response.status_code}, {response.text}")
