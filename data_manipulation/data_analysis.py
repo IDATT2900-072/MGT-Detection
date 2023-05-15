@@ -4,7 +4,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy.ndimage import gaussian_filter1d
 from scipy.stats import pearsonr
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from .data_processing import filter_and_count
+
 
 matplotlib.use('MacOSX')
 
@@ -223,7 +225,8 @@ def plot_scatter(plots: list[dict], d_lines=None, h_lines=None, v_lines=None, x_
                             f"{' ' * correlation['spaces'][1]} r = {corr:.2f}{' ' * correlation['spaces'][2]}∧"
                             f"{' ' * correlation['spaces'][2]} p={p_value:.2f}",
                             color=correlation['color'],
-                            alpha=correlation['alpha'], bbox=dict(facecolor='white', edgecolor='grey', boxstyle='round,pad=0.5'))
+                            alpha=correlation['alpha'],
+                            bbox=dict(facecolor='white', edgecolor='grey', boxstyle='round,pad=0.5'))
 
         if d_lines:
             for d_line in d_lines:
@@ -247,7 +250,8 @@ def plot_scatter(plots: list[dict], d_lines=None, h_lines=None, v_lines=None, x_
     plt.show()
 
 
-def plot_loss_curves(plots, deviations=None, x_label=None, y_label=None, v_lines=None, legend_offset=(1.0, 1.0), sigma=2):
+def plot_loss_curves(plots, deviations=None, x_label=None, y_label=None, v_lines=None, legend_offset=(1.0, 1.0),
+                     sigma=2):
     for plot in plots:
         dataset = plot['dataset']
         positive_loss = []
@@ -327,3 +331,36 @@ def plot_loss_curves(plots, deviations=None, x_label=None, y_label=None, v_lines
             plt.subplots_adjust(left=0.07, bottom=0.143, right=0.93, top=0.943)
             ax.legend(facecolor='white', bbox_to_anchor=(legend_offset[0], legend_offset[1]))
             plt.show()
+
+
+# In-context learning
+
+def print_icl_accuracy(dataset, actual_label_column, human_score_column, generated_score_column, generated_threshold):
+    y_true = []  # List to hold actual labels
+    y_pred = []  # List to hold predicted labels
+
+    # Collect
+    for data_point in dataset:
+        actual_label = data_point[actual_label_column]
+        human_score = data_point[human_score_column]
+        generated_score = data_point[generated_score_column]
+
+        # Append the actual label to y_true
+        y_true.append(actual_label)
+
+        # Determine the predicted label based on the confidence scores and threshold
+        predicted_label = 'Generated' if generated_score > generated_threshold else 'Human'
+
+        # Append the predicted label to y_pred
+        y_pred.append(predicted_label)
+
+    # Calculate the metrics
+    accuracy = accuracy_score(y_true, y_pred)
+    precision = precision_score(y_true, y_pred, pos_label='Generated')
+    recall = recall_score(y_true, y_pred, pos_label='Generated')
+    f1 = f1_score(y_true, y_pred, pos_label='Generated')
+
+    print(f"Accuracy: {accuracy}")
+    print(f"Precision: {precision}")
+    print(f"Recall: {recall}")
+    print(f"F1 Score: {f1}")
