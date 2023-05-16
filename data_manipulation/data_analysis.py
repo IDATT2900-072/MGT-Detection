@@ -6,6 +6,8 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.stats import pearsonr
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from .data_processing import filter_and_count
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
 
 
 matplotlib.use('MacOSX')
@@ -333,11 +335,70 @@ def plot_loss_curves(plots, deviations=None, x_label=None, y_label=None, v_lines
             plt.show()
 
 
-# In-context learning
+def plot_newline_frequencies(plots: list[dict], x_label=None, y_label=None, title=None,
+                             legend_coords=(20, 0.05), sigma=2, text_coords=(0.53, 0.7), v_lines=None):
 
-def print_icl_accuracy(dataset, actual_label_column, human_score_column, generated_score_column, generated_threshold):
+    with plt.style.context('ggplot'):
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        ax.patch.set_facecolor('lightgrey')
+        ax.patch.set_alpha(0.3)
+
+        averages = []
+        total_paragraph_breaks = []
+
+        for plot in plots:
+            total_w = sum(data_point[plot['word_count']] for data_point in plot['dataset'])
+            total_p = sum(data_point[plot['column']].count('\n\n') + 1 for data_point in plot['dataset'])
+            total_pb = sum(data_point[plot['column']].count('\n\n') for data_point in plot['dataset'])
+
+            print(len([data_point for data_point in plot['dataset'] if data_point[plot['word_count']] < 185 and data_point[plot['column']].count('\n\n') > 0]))
+
+            averages.append((total_w / total_p))
+            total_paragraph_breaks.append(total_pb)
+
+
+            x_values = [data_point[plot['word_count']] for data_point in plot['dataset']]
+            y_values = [data_point[plot['word_count']] / (data_point[plot['column']].count('\n\n') + 1) for data_point in plot['dataset']]
+
+            scatter_plot = ax.scatter(x_values, y_values, alpha=plot['alpha'], color=plot['color'])
+            scatter_plot.set_label(plot['display'])
+
+            x_unique, y_mean = calculate_mean_y_per_x(x_values, y_values)
+            x_unique, y_mean = zip(*sorted(zip(x_unique, y_mean)))
+            y_mean_filtered = gaussian_filter1d(y_mean, sigma)
+
+            line_plot, = ax.plot(x_unique, y_mean_filtered, color=plot['mean_color'], alpha=0.8)
+            line_plot.set_label(f"Mean {plot['display']}")
+
+        ax.text(text_coords[0], text_coords[1], f"Mean word per pargraph: Real = {averages[0]:.4f}, Generated = {averages[1]:.4f}\n"
+                                                f"Total paragraph breaks: Real = {total_paragraph_breaks[0]}, Generated = {total_paragraph_breaks[1]}",
+                transform=ax.transAxes, color='darkblue')
+
+        if x_label:
+            ax.set_xlabel(x_label)
+        if y_label:
+            ax.set_ylabel(y_label)
+        if title:
+            ax.set_title(title)
+
+        if v_lines:
+            for v_line in v_lines:
+                ax.axvline(v_line['value'], color=v_line['color'], linestyle='--', alpha=0.8)
+                ax.text(v_line['value'] + v_line['offset'][0], v_line['offset'][1], v_line['text'],
+                        color=v_line['color'])
+
+        ax.legend(facecolor='white', loc='upper right', bbox_to_anchor=legend_coords)
+
+    plt.show()
+
+
+# In-context learning
+def print_icl_accuracy(dataset, actual_label_column, human_score_column, human_label,
+                       generated_label, generated_score_column, generated_threshold):
     y_true = []  # List to hold actual labels
     y_pred = []  # List to hold predicted labels
+    correct = 0
 
     # Collect
     for data_point in dataset:
@@ -349,18 +410,167 @@ def print_icl_accuracy(dataset, actual_label_column, human_score_column, generat
         y_true.append(actual_label)
 
         # Determine the predicted label based on the confidence scores and threshold
-        predicted_label = 'Generated' if generated_score > generated_threshold else 'Human'
+        predicted_label = generated_label if generated_score > generated_threshold else human_label
+        correct += 1 if predicted_label == actual_label else 0
 
         # Append the predicted label to y_pred
         y_pred.append(predicted_label)
 
     # Calculate the metrics
-    accuracy = accuracy_score(y_true, y_pred)
-    precision = precision_score(y_true, y_pred, pos_label='Generated')
-    recall = recall_score(y_true, y_pred, pos_label='Generated')
-    f1 = f1_score(y_true, y_pred, pos_label='Generated')
+    accuracy = round(accuracy_score(y_true, y_pred), 3)
+    precision = round(precision_score(y_true, y_pred, pos_label=generated_label), 3)
+    recall = round(recall_score(y_true, y_pred, pos_label=generated_label), 3)
+    f1 = round(f1_score(y_true, y_pred, pos_label=generated_label), 3)
 
     print(f"Accuracy: {accuracy}")
     print(f"Precision: {precision}")
     print(f"Recall: {recall}")
     print(f"F1 Score: {f1}")
+    print(f"Correct predictions: {correct}/{len(dataset)}")
+
+
+def plot_confidence_scores(plots, human_label, generated_label):
+    # Initialize data for boxplots
+    data = []
+    labels = []
+    with plt.style.context('ggplot'):
+        for plot in plots:
+            dataset = plot['dataset']
+            true_label_column = plot['true_label_column']
+            human_score_column = plot['human_score_column']
+            generated_score_column = plot['generated_score_column']
+
+            # Separate human and generated scores
+            human_scores = [data_point[generated_score_column] for data_point in dataset if data_point[true_label_column] == human_label]
+            generated_scores = [data_point[generated_score_column] for data_point in dataset if data_point[true_label_column] == generated_label]
+
+            # Append data and labels
+            data.append(human_scores)
+            labels.append('True Human')
+
+            data.append(generated_scores)
+            labels.append(' True Generated')
+
+        # Define outlier properties
+        flierprops = dict(marker='o', markerfacecolor='lightgrey', markersize=5,
+                          linestyle='none', markeredgecolor='lightgrey', alpha=0.4)
+
+        # Define median properties
+        medianprops = dict(linestyle='-', linewidth=2, color='red')
+
+        # Create boxplots
+        fig, ax = plt.subplots()
+        ax.patch.set_facecolor('lightgrey')
+        ax.patch.set_alpha(0.25)
+        ax.boxplot(data, labels=labels, flierprops=flierprops, medianprops=medianprops)
+        #ax.set_title('Confidence Scores for Human and Generated Texts')
+        ax.set_ylabel('Generated Confidence Score')
+        plt.subplots_adjust(left=0.112, bottom=0.098, right=0.914, top=0.943)
+
+        plt.show()
+
+
+def plot_confusion_matrix(dataset, true_label_column, human_score_column, generated_score_column,
+                          human_label, generated_label, generated_threshold):
+
+    y_true = []  # List to hold actual labels
+    y_pred = []  # List to hold predicted labels
+
+    for data_point in dataset:
+        actual_label = data_point[true_label_column]
+        human_score = data_point[human_score_column]
+        generated_score = data_point[generated_score_column]
+
+        # Append the actual label to y_true
+        y_true.append(actual_label)
+
+        # Determine the predicted label based on the confidence scores and threshold
+        predicted_label = generated_label if generated_score > generated_threshold else human_label
+
+        # Append the predicted label to y_pred
+        y_pred.append(predicted_label)
+
+    # Create confusion matrix
+    cm = confusion_matrix(y_true, y_pred, labels=[human_label, generated_label])
+    cm_norm = cm.astype('float') / cm.sum()
+
+    # Create array of labels for each cell using percentages and counts
+    labels = np.asarray([f"{percentage:.1%}\n({count})" for percentage, count in zip(cm_norm.flatten(), cm.flatten())]).reshape(cm.shape)
+
+    # Plot confusion matrix
+    ax = plt.subplot()
+    sns.heatmap(cm, annot=labels, ax=ax, cmap='Blues', fmt='')
+
+    # Labels, title and ticks
+    ax.set_title('Confusion Matrix')
+    ax.set_xlabel('Predicted labels')
+    ax.set_ylabel('True labels')
+    ax.xaxis.set_ticklabels(['Human', 'Generated'])
+    ax.yaxis.set_ticklabels(['Human', 'Generated'])
+    plt.subplots_adjust(left=0.1, bottom=0.121, right=1, top=0.921)
+
+    plt.show()
+
+
+def plot_metric_score_thresholds(plots, start=0, end=1, step_size=0.1, x_label="GCS Threshold", y_label="Accuracy", title=f"Accuracy vs GCS Threshold", metric="Accuracy"):
+    if metric == 'F1':
+        title = f"F1 score vs GCS Threshold"
+        y_label='F1 Score'
+
+    thresholds = np.arange(start, end + step_size, step_size)
+
+    with plt.style.context('ggplot'):
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        ax.patch.set_facecolor('lightgrey')
+        ax.patch.set_alpha(0.3)
+
+        all_scores = []  # List to store all scores across all plots
+
+        for i, plot in enumerate(plots):
+            scores = []
+            for threshold in thresholds:
+                y_true = []  # List to hold actual labels
+                y_pred = []  # List to hold predicted labels
+
+                for data_point in plot['dataset']:
+                    actual_label = data_point[plot['true_label_column']]
+                    human_score = data_point[plot['human_score_column']]
+                    generated_score = data_point[plot['generated_score_column']]
+
+                    # Append the actual label to y_true
+                    y_true.append(actual_label)
+
+                    # Determine the predicted label based on the confidence scores and threshold
+                    predicted_label = plot['generated_label'] if generated_score > threshold else plot['human_label']
+
+                    # Append the predicted label to y_pred
+                    y_pred.append(predicted_label)
+
+                score = f1_score(y_true, y_pred, pos_label=plot['generated_label']) if metric == 'F1' else accuracy_score(y_true, y_pred)
+                scores.append(score)
+
+            all_scores.extend(scores)
+
+            line_plot, = ax.plot(thresholds, scores, color=plot['color'], alpha=plot['alpha'])
+            line_plot.set_label(plot['display'])
+
+            # Draw a vertical line at the threshold with maximum score
+            max_acc_index = np.argmax(scores)
+            max_acc_threshold = thresholds[max_acc_index]
+            ax.plot([max_acc_threshold, max_acc_threshold], [min(all_scores) - 0.05, scores[max_acc_index]], color=plot['color'], linestyle='--', alpha=0.5)
+
+            if metric == 'F1':
+                ax.text(max_acc_threshold, min(all_scores) + 0.02 - 0.02 * i, f"x={max_acc_threshold:.3f}", color=plot['color'], ha='left')
+            else:
+                ax.text(max_acc_threshold, min(all_scores) - 0.01 - 0.005 * i, f"x={max_acc_threshold:.3f}", color=plot['color'], ha='left')
+
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.set_title(title)
+        ax.legend(facecolor='white', loc='upper right')
+        ax.set_ylim([min(all_scores) - 0.05, max(all_scores) + 0.05])  # Set y-axis limits
+        plt.subplots_adjust(left=0.088, bottom=0.11, right=0.964, top=0.926)
+
+    plt.show()
+
