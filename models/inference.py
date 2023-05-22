@@ -1,6 +1,6 @@
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
 
-output_path = "../outputs/---"
+output_path = "andreas122001/roberta-academic-detector"
 tokenizer = AutoTokenizer.from_pretrained(output_path)
 model = AutoModelForSequenceClassification.from_pretrained(output_path)
 
