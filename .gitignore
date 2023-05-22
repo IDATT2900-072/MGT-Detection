@@ -8,3 +8,4 @@ test*.ipynb
 **/outputs
 test/**
 **/val_logs/*
+figures/**
