@@ -7,7 +7,6 @@
 #SBATCH --mem=50G
 #SBATCH --gres=gpu:A100m80:1
 #SBATCH --constraint=A100
-#SBATCH --job-name="eval-560m-abs-abs"
 #SBATCH --output="./val_logs/%x.out"
 #SBATCH --mail-type=end
 #SBATCH --mail-user=andrebw@stud.ntnu.no

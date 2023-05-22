@@ -211,14 +211,11 @@ def cleanup_whitespaces(text):
     # Replace all non-newline sequences of whitespace with a single space character.
     clean = re.sub(r'[^\S\n]+', ' ', clean)
 
-    # Remove all non-newline characters succeeding a newline character.
+    # Remove all non-newline whitespaces succeeding a newline character.
     clean = re.sub(r'(\n[^\S\n]+)', '\n', clean)
 
     # Remove any whitespace preceding first non-whitespace character of the text.
-    clean = re.sub(r'^\s+', '', clean)
-
-    # Remove everything after last '.', '!', or '?'.
-    clean = re.sub(r'([.!?])(?:(?!\1).)*$', r'\1', clean)
+    clean = clean.strip()
 
     return clean
 

@@ -9,6 +9,7 @@ from pathlib import Path
 import time
 
 from .data_processing import word_length_of, filter_and_count, completion_bar
+from .csv_writing import create_csv_if_nonexistent, write_csv_row, path_to_csv
 
 # Constants
 API_KEY = Path('../../api-keys/openai_key').read_text()
@@ -40,25 +41,17 @@ def generate_abstracts(data, target_file_name, target_dir_path="./", start_index
     """
 
     # Set up the input prompts
-    with open('../prompts/chatgpt-prompt.json') as file:
+    with open('../prompts/generation-prompts.json') as file:
         prompts = json.load(file)
     system_prompt = prompts['system_instruction']
     user_base_prompt = prompts['user_base_instruction']
     expand_base_prompt = prompts['user_expand_instruction']
 
     # Initiate CSV
-    path_to_csv = target_dir_path + "/" + target_file_name + ".csv"
-    if not Path(path_to_csv).is_file():
-        print("No file already exists. Creating blank CSV\n")
-        os.makedirs(target_dir_path, exist_ok=True)
-        with open(path_to_csv, 'w') as f:
-            writer = csv.writer(f)
-            writer.writerow(['title', 'real_abstract', 'real_word_count', 'generated_abstract', 'generated_word_count'])
-    else:
-        print("CSV-file already exists. Will append new rows to existing document. Cancel execution if this is not "
-              "intended.\n")
+    columns = ['title', 'real_abstract', 'real_word_count', 'generated_abstract', 'generated_word_count']
+    create_csv_if_nonexistent(columns, target_dir_path, target_file_name)
 
-        # Reverse data-list if set
+    # Reverse data-list if set
     if not iterate_forward:
         data.reverse()
 
@@ -81,10 +74,8 @@ def generate_abstracts(data, target_file_name, target_dir_path="./", start_index
         generated_abstract, generated_word_count = generate_GPT_abstract(system_prompt, user_prompt)
 
         # Write to CSV
-        with open(path_to_csv, 'a') as f:
-            writer = csv.writer(f)
-            writer.writerow(
-                [title, real_abstract, real_word_count, generated_abstract, generated_word_count])
+        row = [title, real_abstract, real_word_count, generated_abstract, generated_word_count]
+        write_csv_row(row, path_to_csv(target_dir_path, target_file_name))
 
     print("\nAbstract generation complete.\n\n")
 

@@ -3,7 +3,9 @@ import csv
 import os
 import re
 
+from sklearn.utils import shuffle
 from .data_processing import word_length_of, completion_bar
+from .csv_writing import write_csv
 
 
 def reformat_supervised_learning(source_csv_path, title, real_label, real_word_count, generated_label, generated_word_count, target_dir_path,
@@ -31,24 +33,21 @@ def reformat_supervised_learning(source_csv_path, title, real_label, real_word_c
     target_file_name : str
         Name of the reformatted dataset.
     """
-    data = pd.read_csv(source_csv_path, engine="python")
+    data = pd.read_csv(source_csv_path, engine="python").sample(frac=1)
+    data = shuffle(data)
     fields = ['title', 'label', 'text', 'word_count']
     formatted_data = []
 
-    for i in range(len(data)):
-        formatted_data.append([data[title][i], 0, data[real_label][i], data[real_word_count][i]])
-        formatted_data.append([data[title][i], 1, data[generated_label][i], data[generated_word_count][i]])
+    for i, row in data.iterrows():
+        formatted_data.append([row[title], 0, row[real_label], row[real_word_count]])
+        formatted_data.append([row[title], 1, row[generated_label], row[generated_word_count]])
 
-    os.makedirs(target_dir_path, exist_ok=True)
-    with open(target_dir_path + "/" + target_file_name + ".csv", 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(fields)
-        writer.writerows(formatted_data)
+    write_csv(fields, formatted_data, target_dir_path, target_file_name)
 
     print(f"Reformatting complete. Number of entries in reformatted dataset: {len(formatted_data)}")
 
 
-def clean_text_column(dirty_columns, cleaning_func, source_csv_path, target_dir_path, target_file_name):
+def clean_text_column(dirty_columns, cleaning_func, source_csv_path, target_dir_path, target_file_name, delim=","):
     """
     Replaces all text-entries in a csv-column with the using the passed cleaning function.
 
@@ -65,7 +64,7 @@ def clean_text_column(dirty_columns, cleaning_func, source_csv_path, target_dir_
     target_file_name : str
         Name of the reformatted dataset.
     """
-    data = pd.read_csv(source_csv_path, engine="python")
+    data = pd.read_csv(source_csv_path, engine="python", delimiter=delim)
 
     for dirty_column in dirty_columns:
         data[dirty_column] = data[dirty_column].apply(cleaning_func)
@@ -76,8 +75,8 @@ def clean_text_column(dirty_columns, cleaning_func, source_csv_path, target_dir_
     print(f"Column(s) cleaned.")
 
 
-def deduplicate_csv(source_csv_path, unique_key, target_file_name, target_dir_path="./", write_csv=True):
-    data = pd.read_csv(source_csv_path, engine="python")
+def deduplicate_csv(source_csv_path, unique_key, target_file_name, target_dir_path="./", delim=",", write_csv=True):
+    data = pd.read_csv(source_csv_path, engine="python", delimiter=delim)
 
     num_dupes = data[unique_key].size - len(data[unique_key].unique())
     print(f'Found {num_dupes} duplicates.')
@@ -112,10 +111,5 @@ def recount_words_csv(column_pairs: [(str, str)], source_csv_path, target_dir_pa
 
             new_data[i][count_index] = word_length_of(row[text_index])
 
-    os.makedirs(target_dir_path, exist_ok=True)
-    with open(target_dir_path + "/" + target_file_name + ".csv", 'w') as f:
-        writer = csv.writer(f)
-        writer.writerow(fields)
-        writer.writerows(new_data)
-
+    write_csv(fields, new_data, target_dir_path, target_file_name)
     print(f"\nColumn(s) recounted.")
