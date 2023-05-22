@@ -6,8 +6,21 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.stats import pearsonr
 from .data_processing import filter_and_count
 
-matplotlib.use('MacOSX')
+# matplotlib.use('MacOSX')
 
+
+def generate_metrics(trues, falses):
+    accuracy = np.sum(trues) / (np.sum(trues) + np.sum(falses))
+    precision = trues[1] / (trues[1] + falses[1])
+    recall = trues[1] / (trues[1] + falses[0])
+    f1 =  2 * (precision * recall) / (precision + recall)
+    return {
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1': f1
+    }
+    
 
 def display_word_count_intervals(dataset, intervals, column_name):
     # Count word ranges

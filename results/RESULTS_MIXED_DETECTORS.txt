@@ -1,0 +1,77 @@
+################
+# ON CROSS
+bloomz-560m on mixed
+1841
+1719
+156
+34
+
+bloomz-1b7 on mixed
+1783
+1705
+170
+92
+
+bloomz-3b on mixed
+1861
+1846
+29
+14
+
+roberta on mixed
+1850
+1872
+3
+25
+
+################
+# ON WIKI
+560m on wiki_labeled
+22469
+21296
+1204
+31
+
+1b7 on wiki_labeled
+22423
+21018
+1482
+77
+
+3b-cross on wiki_labeled
+22483
+22351
+149
+17
+
+roberta on wiki_labeled
+22392
+22481
+19
+108
+
+################
+# ON ACADEMIC
+560m on research_abstracts_labeled
+1083
+1410
+90
+417
+
+1b7 on research_abstracts_labeled
+954
+1411
+89
+546
+
+3b on research_abstracts_labeled
+647
+1479
+21
+853
+
+roberta on research_abstracts_labeled
+888
+1494
+6
+612

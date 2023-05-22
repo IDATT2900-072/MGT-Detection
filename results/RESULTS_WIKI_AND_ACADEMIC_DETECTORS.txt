@@ -1,0 +1,107 @@
+# WIKI
+## on wiki-intros
+bloomz-560m-wiki on wiki_labeled
+22484
+21351
+1149
+16
+
+bloomz-1b7-wiki on wiki_labeled
+22488
+21352
+1148
+12
+
+bloomz-3b-wiki on wiki_labeled
+22486
+22450
+50
+14
+
+roberta-wiki on wiki_labeled
+22477
+22464
+36
+23
+
+
+
+## on abstracts
+bloomz-560m-wiki on research_abstracts_labeled
+756
+922
+578
+744
+
+bloomz-1b7-wiki on research_abstracts_labeled
+784
+832
+668
+716
+
+bloomz-3b-wiki on research_abstracts_labeled
+572
+1044
+456
+928
+
+roberta-wiki on research_abstracts_labeled
+638
+1039
+461
+862
+
+# ABSTRACT
+## on abstracts
+bloomz-560m-academic on research_abstracts_labeled
+1444
+1447
+53
+56
+
+bloomz-1b7-academic on research_abstracts_labeled
+1411
+1427
+73
+89
+
+bloomz-3b-academic on research_abstracts_labeled
+1475
+1478
+22
+25
+
+roberta-academic on research_abstracts_labeled
+1451
+1495
+5
+49
+
+## on wiki
+bloomz-560m-academic on wiki_labeled
+21807
+3620
+18880
+693
+
+bloomz-1b7-academic on wiki_labeled
+21898
+669
+21831
+602
+
+bloomz-3b-academic on wiki_labeled
+22466
+722
+21778
+34
+
+roberta-academic on wiki_labeled
+21540
+11973
+10527
+960
+
+
+
+
