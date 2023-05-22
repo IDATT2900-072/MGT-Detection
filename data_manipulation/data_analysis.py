@@ -14,6 +14,11 @@ matplotlib.use('MacOSX')
 
 
 def display_word_count_intervals(dataset, intervals, column_name):
+    """
+    Displays the average word count for intervals passed as argument using a barplot.
+    """
+
+
     # Count word ranges
     for interval in intervals:
         _, interval['num_matches'] = filter_and_count(dataset, column_name, interval['min'], interval['max'])
@@ -40,6 +45,11 @@ def display_word_count_intervals(dataset, intervals, column_name):
 
 def plot_distribution(plots: list[dict], start, end, sigma=2, x_label=None, y_label=None, save_to=None, title=None,
                       y_lim=None, h_lines=None, v_lines=None, legend_offset=1.0):
+    """
+    Plots the distribution of wordcounts in a given dataset. Number of data points on y-axis, wordcount on x-axis.
+    """
+
+
     # Set the plot style
     with plt.style.context('ggplot'):
         # Create the figure and axis objects
@@ -120,7 +130,12 @@ def plot_distribution(plots: list[dict], start, end, sigma=2, x_label=None, y_la
 
 
 def plot_histogram(plots: list[dict], start, end, x_label, y_label, y_lim=None, save_to=None):
+    """
+    Plots a histogram of wordcounts in a given dataset. Number of data points on y-axis, wordcount on x-axis.
+    """
+
     bins = end - start + 1
+
 
     # Set the plot style
     with plt.style.context('ggplot'):
@@ -165,6 +180,10 @@ def plot_histogram(plots: list[dict], start, end, x_label, y_label, y_lim=None, 
 
 
 def calculate_mean_y_per_x(x_values, y_values):
+    """
+    Calculated the mean y-value fore each unique x-value.
+    """
+
     xy_dict = {}
     for x, y in zip(x_values, y_values):
         if x not in xy_dict:
@@ -178,6 +197,9 @@ def calculate_mean_y_per_x(x_values, y_values):
 
 def plot_scatter(plots: list[dict], d_lines=None, h_lines=None, v_lines=None, x_label=None, y_label=None, y_lim=None,
                  legend_offset=(1.0, 1.0), average_curve=None, sigma=2, correlations=None):
+    """
+    Plots a scatter plot which displays the correlations between values of two data points.
+    """
     with plt.style.context('ggplot'):
         fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -254,6 +276,9 @@ def plot_scatter(plots: list[dict], d_lines=None, h_lines=None, v_lines=None, x_
 
 def plot_loss_curves(plots, deviations=None, x_label=None, y_label=None, v_lines=None, legend_offset=(1.0, 1.0),
                      sigma=2):
+    """
+    Plots the curve of average deviation from between two separate values in a dataset.
+    """
     for plot in plots:
         dataset = plot['dataset']
         positive_loss = []
@@ -337,6 +362,9 @@ def plot_loss_curves(plots, deviations=None, x_label=None, y_label=None, v_lines
 
 def plot_newline_frequencies(plots: list[dict], x_label=None, y_label=None, title=None,
                              legend_coords=(20, 0.05), sigma=2, text_coords=(0.53, 0.7), v_lines=None):
+    """
+    Plots the average word per paragraph on the y-axis with respect to wprd count on the x-axis.
+    """
 
     with plt.style.context('ggplot'):
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -396,6 +424,9 @@ def plot_newline_frequencies(plots: list[dict], x_label=None, y_label=None, titl
 # In-context learning
 def print_icl_accuracy(dataset, actual_label_column, human_score_column, human_label,
                        generated_label, generated_score_column, generated_threshold):
+    """
+        Calculates performance metrics based on binary classification results provided in a dataset.
+    """
     y_true = []  # List to hold actual labels
     y_pred = []  # List to hold predicted labels
     correct = 0
@@ -430,6 +461,10 @@ def print_icl_accuracy(dataset, actual_label_column, human_score_column, human_l
 
 
 def plot_confidence_scores(plots, human_label, generated_label):
+    """
+    Plots the confidence scores of a model using a boxplot.
+    """
+
     # Initialize data for boxplots
     data = []
     labels = []
@@ -472,6 +507,9 @@ def plot_confidence_scores(plots, human_label, generated_label):
 
 def plot_confusion_matrix(dataset, true_label_column, human_score_column, generated_score_column,
                           human_label, generated_label, generated_threshold):
+    """
+    Plots the confusion matrices of classification result provided in a dataset.
+    """
 
     y_true = []  # List to hold actual labels
     y_pred = []  # List to hold predicted labels
@@ -513,6 +551,9 @@ def plot_confusion_matrix(dataset, true_label_column, human_score_column, genera
 
 
 def plot_metric_score_thresholds(plots, start=0, end=1, step_size=0.1, x_label="GCS Threshold", y_label="Accuracy", title=f"Accuracy vs GCS Threshold", metric="Accuracy"):
+    """
+    Displays the curve of all accuracies for each condifence score threshold value in a passed interval.
+    """
     if metric == 'F1':
         title = f"F1 score vs GCS Threshold"
         y_label='F1 Score'
